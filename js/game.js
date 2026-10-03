@@ -50,6 +50,8 @@ const state = {
   suppressBoleteria: false,
   returnSpawn: { tx: 8, ty: 20 },
   hover: -1,
+  /** @type {null | { id: string, mapId: string, tx: number, ty: number, x: number, y: number, toss: null | { fromX: number, fromY: number, toX: number, toY: number, t: number, dur: number } }} */
+  worldCoin: null,
 };
 
 function tileCenter(tile) {
@@ -382,11 +384,19 @@ function coinCount() {
 
 function takeCoin() {
   const coin = state.map.coin;
-  if (!coin || state.coins.has(coin.id)) {
-    return;
-  }
-  if (sameTile(playerTile(), coin)) {
+  if (coin && !state.coins.has(coin.id) && sameTile(playerTile(), coin)) {
     state.coins.add(coin.id);
+  }
+  const world = state.worldCoin;
+  if (
+    world &&
+    !world.toss &&
+    world.mapId === state.map.id &&
+    !state.coins.has(world.id) &&
+    sameTile(playerTile(), world)
+  ) {
+    state.coins.add(world.id);
+    state.worldCoin = null;
   }
 }
 
@@ -400,12 +410,57 @@ function openDialogue(lines, action, quiz) {
   };
 }
 
-function awardCoin(id) {
-  if (!id || state.coins.has(id)) {
+function quizCoinPending(quiz) {
+  if (!quiz?.coinId) {
     return false;
   }
-  state.coins.add(id);
-  return true;
+  if (state.coins.has(quiz.coinId)) {
+    return true;
+  }
+  return Boolean(state.worldCoin && state.worldCoin.id === quiz.coinId);
+}
+
+function tossCoinFromNpc(npc, quiz) {
+  const coinId = quiz.coinId;
+  if (!coinId || quizCoinPending(quiz)) {
+    return;
+  }
+  const land = quiz.land || { tx: npc.tx + 1, ty: npc.ty + 1 };
+  const from = tileCenter(npc);
+  const to = tileCenter(land);
+  state.worldCoin = {
+    id: coinId,
+    mapId: state.map.id,
+    tx: land.tx,
+    ty: land.ty,
+    x: from.x,
+    y: from.y - 20,
+    toss: {
+      fromX: from.x + 4,
+      fromY: from.y - 22,
+      toX: to.x,
+      toY: to.y,
+      t: 0,
+      dur: 0.75,
+    },
+  };
+}
+
+function updateWorldCoin(dt) {
+  const coin = state.worldCoin;
+  if (!coin?.toss) {
+    return;
+  }
+  coin.toss.t += dt;
+  const u = Math.min(1, coin.toss.t / coin.toss.dur);
+  const arc = Math.sin(u * Math.PI) * 34;
+  coin.x = coin.toss.fromX + (coin.toss.toX - coin.toss.fromX) * u;
+  coin.y = coin.toss.fromY + (coin.toss.toY - coin.toss.fromY) * u - arc;
+  if (u >= 1) {
+    coin.x = coin.toss.toX;
+    coin.y = coin.toss.toY;
+    coin.toss = null;
+  }
 }
 
 function answerQuiz(optionIndex) {
@@ -415,8 +470,11 @@ function answerQuiz(optionIndex) {
   }
   const quiz = dialogue.quiz;
   if (optionIndex === quiz.correct) {
-    awardCoin(quiz.coinId);
     openDialogue(quiz.win);
+    const npc = state.map.npcs.find((entry) => entry.quiz === quiz) || nearbyNpc();
+    if (npc) {
+      tossCoinFromNpc(npc, quiz);
+    }
     return;
   }
   openDialogue(quiz.lose);
@@ -493,7 +551,11 @@ function talk() {
   const npc = nearbyNpc();
   if (npc) {
     if (npc.quiz) {
-      openDialogue(npc.lines, "quiz", npc.quiz);
+      if (quizCoinPending(npc.quiz)) {
+        openDialogue(npc.quiz.done || ["Ya te di la moneda."]);
+      } else {
+        openDialogue(npc.lines, "quiz", npc.quiz);
+      }
     } else {
       openDialogue([npc.name, ...npc.lines]);
     }
@@ -899,20 +961,30 @@ function drawDoors(map) {
   }
 }
 
-function drawCoin(map) {
-  if (!map.coin || state.coins.has(map.coin.id)) {
-    return;
-  }
-  const x = map.coin.tx * TILE + 8;
-  const y = map.coin.ty * TILE + 8;
+function paintCoin(x, y, flying) {
+  const bob = flying ? 0 : Math.sin(performance.now() / 180) * 1.2;
+  const squash = flying ? 0.75 + Math.abs(Math.sin(performance.now() / 50)) * 0.35 : 1;
+  const rx = 5 * squash;
+  const ry = 5 / squash;
   ctx.fillStyle = "#1a120e";
   ctx.beginPath();
-  ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.ellipse(x, y + bob, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "#f2d24b";
   ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.ellipse(x, y + bob, rx * 0.65, ry * 0.65, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawCoin(map) {
+  if (map.coin && !state.coins.has(map.coin.id)) {
+    paintCoin(map.coin.tx * TILE + 8, map.coin.ty * TILE + 8, false);
+  }
+  const world = state.worldCoin;
+  if (!world || world.mapId !== map.id || state.coins.has(world.id)) {
+    return;
+  }
+  paintCoin(world.x, world.y, Boolean(world.toss));
 }
 
 const PIXEL = {
@@ -1465,6 +1537,7 @@ function frame(now) {
   }
   move(dt);
   if (state.screen === "play") {
+    updateWorldCoin(dt);
     takeCoin();
     checkTransitions();
     checkBoleteria();

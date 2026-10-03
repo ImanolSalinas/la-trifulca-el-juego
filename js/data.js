@@ -419,7 +419,7 @@ const MAPS = {
       { tx: 20, ty: 28 },
       { tx: 21, ty: 28 },
     ],
-    coin: { id: "tilos", tx: 26, ty: 12 },
+    coin: null,
     npcs: [
       {
         id: "nachito",
@@ -428,7 +428,7 @@ const MAPS = {
         name: "Nachito Saralegui",
         dir: "down",
         visible: true,
-        portrait: "assets/nachito-walk.png?v=58",
+        portrait: "assets/nachito-walk.png?v=59",
         sheet: {
           cellW: 140,
           cellH: 205,
@@ -453,8 +453,10 @@ const MAPS = {
           ],
           correct: 1,
           coinId: "tilos",
-          win: ["¡Bien ahí!", "Gira en vos. Tomá la moneda."],
+          land: { tx: 19, ty: 14 },
+          win: ["¡Bien ahí!", "Gira en vos. Ahí te revoleo la moneda."],
           lose: ["Nop, esa no es.", "Pensala de nuevo y volvé a hablarme."],
+          done: ["Ya te tiré la moneda.", "Andá a buscarla al piso."],
         },
       },
     ],
