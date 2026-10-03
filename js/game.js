@@ -617,7 +617,7 @@ function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const zoom = map.id === "moreno" ? Math.min(VIEW_W / width, VIEW_H / height) : 1;
+  const zoom = map.id === "moreno" ? 0.28 : 1;
   const viewW = VIEW_W / zoom;
   const viewH = VIEW_H / zoom;
   const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
