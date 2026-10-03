@@ -964,7 +964,8 @@ function drawWalkSheet(image, character, feetX, feetY, dir, frame) {
   if (!image.complete || image.naturalWidth === 0) {
     return;
   }
-  const { cellW, cellH, foot, dirs, scale } = character.sheet;
+  const { cellW, cellH, foot, dirs, scale: baseScale } = character.sheet;
+  const scale = baseScale * (state.map.id === "pasillo" ? 2 : 1);
   const row = dirs[dir] ?? 0;
   const dw = cellW * scale;
   const dh = cellH * scale;
