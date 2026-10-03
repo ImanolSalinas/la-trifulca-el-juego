@@ -158,10 +158,10 @@ function universalSolid(x, y) {
 }
 
 const MORENO_ART = new Image();
-MORENO_ART.src = "assets/places/moreno/plaza.png?v=63";
+MORENO_ART.src = "assets/places/moreno/plaza.png?v=65";
 
 const MORENO_COLLISION = new Image();
-MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=63";
+MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=65";
 /** @type {Uint8ClampedArray | null} */
 let morenoCollisionPixels = null;
 MORENO_COLLISION.addEventListener("load", () => {
@@ -174,8 +174,8 @@ MORENO_COLLISION.addEventListener("load", () => {
 });
 
 function morenoSolid(x, y) {
-  const mapW = 110 * TILE;
-  const mapH = 55 * TILE;
+  const mapW = 80 * TILE;
+  const mapH = 45 * TILE;
   if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
     return true;
   }
