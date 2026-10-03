@@ -89,7 +89,7 @@ TITLE_ART.src = "assets/brand/title.jpg?v=51";
 const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
 
 const PASILLO_ART = new Image();
-PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=69";
+PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=70";
 
 const FRAWENS_ART = new Image();
 FRAWENS_ART.src = "assets/places/frawens/salon.png?v=38";
