@@ -120,10 +120,13 @@ const PASILLO_ART = new Image();
 PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=70";
 
 const FRAWENS_ART = new Image();
-FRAWENS_ART.src = "assets/places/frawens/salon.png?v=38";
+FRAWENS_ART.src = "assets/places/frawens/salon.png?v=74";
+
+const FRAWENS_BALLS = new Image();
+FRAWENS_BALLS.src = "assets/places/frawens/balls.png?v=74";
 
 const FRAWENS_COLLISION = new Image();
-FRAWENS_COLLISION.src = "assets/places/frawens/collision-game.png?v=38";
+FRAWENS_COLLISION.src = "assets/places/frawens/collision-game.png?v=72";
 /** @type {Uint8ClampedArray | null} */
 let frawensCollisionPixels = null;
 FRAWENS_COLLISION.addEventListener("load", () => {
@@ -233,6 +236,22 @@ for (const [name, file] of [
   TILOS_ART[name] = image;
 }
 
+const TILOS_AWNING = new Image();
+TILOS_AWNING.src = "assets/places/tilos/tent-awning.png?v=76";
+
+const TILOS_COLLISION = new Image();
+TILOS_COLLISION.src = "assets/places/tilos/tent-collision.png?v=78";
+/** @type {Uint8ClampedArray | null} */
+let tilosCollisionPixels = null;
+TILOS_COLLISION.addEventListener("load", () => {
+  const board = document.createElement("canvas");
+  board.width = TILOS_COLLISION.naturalWidth;
+  board.height = TILOS_COLLISION.naturalHeight;
+  const boardCtx = board.getContext("2d");
+  boardCtx.drawImage(TILOS_COLLISION, 0, 0);
+  tilosCollisionPixels = boardCtx.getImageData(0, 0, board.width, board.height).data;
+});
+
 function tilosSprite(kind, x, y, height) {
   const image = TILOS_ART[kind];
   const ratio = image.naturalWidth > 0 ? image.naturalWidth / image.naturalHeight : 0.5;
@@ -283,19 +302,10 @@ function tilosSolid(x, y) {
   const tent = TILOS_PLACE.tent;
   const ix = x - tent.x;
   const iy = y - tent.y;
-  if (ix > 0 && iy > 0 && ix < tent.w && iy < tent.h) {
-    const wall = 20;
-    const door = ix > tent.w * 0.42 && ix < tent.w * 0.58;
-    if (iy < 32 || ix < wall || ix > tent.w - wall || (iy > tent.h - wall && !door)) {
-      return true;
-    }
-    if (ix > tent.w * 0.14 && ix < tent.w * 0.36 && iy > tent.h * 0.16 && iy < tent.h * 0.4) {
-      return true;
-    }
-    if (ix < tent.w * 0.09 && iy > tent.h * 0.28 && iy < tent.h * 0.72) {
-      return true;
-    }
-    if (ix > tent.w * 0.9) {
+  if (ix >= 0 && iy >= 0 && ix < tent.w && iy < tent.h && tilosCollisionPixels) {
+    const px = Math.min(TILOS_COLLISION.naturalWidth - 1, Math.floor(ix));
+    const py = Math.min(TILOS_COLLISION.naturalHeight - 1, Math.floor(iy));
+    if (tilosCollisionPixels[(py * TILOS_COLLISION.naturalWidth + px) * 4] < 128) {
       return true;
     }
   }
@@ -645,7 +655,7 @@ function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const zoom = map.id === "moreno" ? 0.28 : 1;
+  const zoom = map.id === "moreno" ? 0.28 : map.id === "tilos" ? 0.72 : 1;
   const viewW = VIEW_W / zoom;
   const viewH = VIEW_H / zoom;
   const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
@@ -723,6 +733,19 @@ function drawTilosGround() {
   ctx.restore();
 }
 
+function drawTilosAwning() {
+  if (state.map.id !== "tilos" || !TILOS_AWNING.complete || !TILOS_AWNING.naturalWidth) {
+    return;
+  }
+  const tent = TILOS_PLACE.tent;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(TILOS_AWNING, tent.x, tent.y, tent.w, tent.h);
+  ctx.restore();
+  ctx.imageSmoothingEnabled = false;
+}
+
 function drawTilosProps(beforePlayer) {
   if (state.map.id !== "tilos") {
     return;
@@ -763,6 +786,20 @@ function drawPasillo() {
 
 function drawFrawens() {
   drawVenueArt(FRAWENS_ART, "#2a2438");
+}
+
+function drawFrawensBalls() {
+  if (state.map.id !== "frawens" || !FRAWENS_BALLS.complete || !FRAWENS_BALLS.naturalWidth) {
+    return;
+  }
+  const mapW = state.map.rows[0].length * TILE;
+  const mapH = state.map.rows.length * TILE;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(FRAWENS_BALLS, 0, 0, mapW, mapH);
+  ctx.restore();
+  ctx.imageSmoothingEnabled = false;
 }
 
 function drawUniversal() {
@@ -1469,6 +1506,8 @@ function render() {
   drawDoors(state.map);
   drawCoin(state.map);
   drawPeople(state.map);
+  drawFrawensBalls();
+  drawTilosAwning();
   drawTilosProps(false);
   drawSigns(state.map);
   ctx.restore();
