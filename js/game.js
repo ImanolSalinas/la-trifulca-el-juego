@@ -158,10 +158,10 @@ function universalSolid(x, y) {
 }
 
 const MORENO_ART = new Image();
-MORENO_ART.src = "assets/places/moreno/plaza.png?v=62";
+MORENO_ART.src = "assets/places/moreno/plaza.png?v=63";
 
 const MORENO_COLLISION = new Image();
-MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=62";
+MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=63";
 /** @type {Uint8ClampedArray | null} */
 let morenoCollisionPixels = null;
 MORENO_COLLISION.addEventListener("load", () => {
@@ -174,8 +174,8 @@ MORENO_COLLISION.addEventListener("load", () => {
 });
 
 function morenoSolid(x, y) {
-  const mapW = 48 * TILE;
-  const mapH = 24 * TILE;
+  const mapW = 110 * TILE;
+  const mapH = 55 * TILE;
   if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
     return true;
   }
@@ -739,7 +739,19 @@ function drawUniversal() {
 }
 
 function drawMoreno() {
-  drawVenueArt(MORENO_ART, "#c4b49a");
+  const mapW = state.map.rows[0].length * TILE;
+  const mapH = state.map.rows.length * TILE;
+  if (MORENO_ART.complete && MORENO_ART.naturalWidth) {
+    ctx.save();
+    // Native-resolution art: keep pixels crisp (no canvas resample blur).
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(MORENO_ART, 0, 0, mapW, mapH);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+    return;
+  }
+  ctx.fillStyle = "#c4b49a";
+  ctx.fillRect(0, 0, mapW, mapH);
 }
 
 function drawFloorAndWalls(map) {
