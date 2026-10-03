@@ -297,7 +297,7 @@ const MAPS = {
         ty: 7,
         to: "moreno",
         label: "Plaza Moreno",
-        spawnThere: { tx: 54, ty: 29 },
+        spawnThere: { tx: 54, ty: 33 },
         spawnBack: { tx: 25, ty: 9 },
       },
       {
@@ -305,7 +305,7 @@ const MAPS = {
         ty: 7,
         to: "moreno",
         label: "",
-        spawnThere: { tx: 54, ty: 29 },
+        spawnThere: { tx: 54, ty: 33 },
         spawnBack: { tx: 25, ty: 9 },
       },
       {
@@ -313,7 +313,7 @@ const MAPS = {
         ty: 7,
         to: "moreno",
         label: "",
-        spawnThere: { tx: 54, ty: 29 },
+        spawnThere: { tx: 54, ty: 33 },
         spawnBack: { tx: 25, ty: 9 },
       },
       {
@@ -691,7 +691,7 @@ const MAPS = {
     ]),
     floor: ["#c4b49a", "#b8a88e"],
     wall: "#3a342c",
-    spawn: { tx: 54, ty: 29 },
+    spawn: { tx: 54, ty: 33 },
     exits: [
       { tx: 54, ty: 26 },
       { tx: 55, ty: 26 },
@@ -699,6 +699,10 @@ const MAPS = {
       { tx: 55, ty: 27 },
     ],
     coin: null,
+    coins: [
+      { id: "moreno-catedral", tx: 26, ty: 27 },
+      { id: "moreno-muni", tx: 83, ty: 27 },
+    ],
     npcs: [],
     doors: [],
     counter: false,
@@ -712,7 +716,7 @@ const MAPS = {
     wall: "#1a120e",
     spawn: { tx: 8, ty: 9 },
     exits: [],
-    coin: null,
+    coin: { id: "gatos", tx: 10, ty: 8 },
     npcs: [],
     doors: [],
     counter: false,

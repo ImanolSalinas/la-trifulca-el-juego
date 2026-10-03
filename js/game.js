@@ -501,10 +501,20 @@ function coinCount() {
   return state.coins.size;
 }
 
+const COIN_TOTAL = 6;
+
+function mapCoins(map) {
+  if (Array.isArray(map.coins) && map.coins.length) {
+    return map.coins;
+  }
+  return map.coin ? [map.coin] : [];
+}
+
 function takeCoin() {
-  const coin = state.map.coin;
-  if (coin && !state.coins.has(coin.id) && sameTile(playerTile(), coin)) {
-    state.coins.add(coin.id);
+  for (const coin of mapCoins(state.map)) {
+    if (!state.coins.has(coin.id) && sameTile(playerTile(), coin)) {
+      state.coins.add(coin.id);
+    }
   }
   state.worldCoins = state.worldCoins.filter((world) => {
     if (
@@ -607,10 +617,10 @@ function answerQuiz(optionIndex) {
 
 function openBoleteriaDialogue() {
   const count = coinCount();
-  if (count < 3) {
-    const falta = 3 - count;
+  if (count < COIN_TOTAL) {
+    const falta = COIN_TOTAL - count;
     const llevas =
-      count === 0 ? "Todavía no trajiste monedas." : `Llevás ${count} de 3.`;
+      count === 0 ? "Todavía no trajiste monedas." : `Llevás ${count} de ${COIN_TOTAL}.`;
     const faltaLine =
       falta === 1 ? "Te falta 1 moneda." : `Te faltan ${falta} monedas.`;
     openDialogue([
@@ -618,7 +628,7 @@ function openBoleteriaDialogue() {
       "Acá se cambian las monedas por la entrada a Medusa.",
       llevas,
       faltaLine,
-      "Hay una moneda en cada puerta. Volvé cuando tengas las 3.",
+      "Son 6 en total. Volvé cuando las tengas.",
     ]);
     return;
   }
@@ -628,12 +638,12 @@ function openBoleteriaDialogue() {
     url
       ? [
           "Boletería",
-          "Las 3 monedas. Perfecto.",
+          "Las 6 monedas. Perfecto.",
           "Listo. Sacá tu entrada a Medusa.",
         ]
       : [
           "Boletería",
-          "Las 3 monedas. Perfecto.",
+          "Las 6 monedas. Perfecto.",
           "Listo. Falta cargar el link de Medusa.",
         ],
     url ? "ticket" : null,
@@ -729,7 +739,7 @@ function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const zoom = map.id === "moreno" ? 0.28 : map.id === "tilos" || map.id === "universal" ? 0.72 : 1;
+  const zoom = map.id === "moreno" ? 0.5 : map.id === "tilos" || map.id === "universal" ? 0.72 : 1;
   const viewW = VIEW_W / zoom;
   const viewH = VIEW_H / zoom;
   const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
@@ -1169,16 +1179,18 @@ function drawSecretExit() {
   const point = morenoExitPoint();
   const x = point.x;
   const y = point.y;
-  ctx.fillStyle = "#1a120e";
-  ctx.fillRect(x - 11, y - 11, 22, 22);
-  ctx.fillStyle = "#e6c36a";
-  ctx.fillRect(x - 8, y - 8, 16, 16);
-  ctx.fillStyle = "#1a120e";
-  ctx.fillRect(x - 5, y - 4, 10, 8);
-  ctx.fillStyle = "#e6c36a";
-  ctx.fillRect(x - 3, y - 2, 6, 4);
-  ctx.fillStyle = "#1a120e";
-  ctx.fillRect(x - 6, y + 5, 12, 2);
+  ctx.fillStyle = "#3a3228";
+  ctx.beginPath();
+  ctx.ellipse(x, y, 13, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#14110e";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, 10, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#050403";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 6, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawDoors(map) {
@@ -1245,8 +1257,10 @@ function paintCoin(x, y, flying) {
 }
 
 function drawCoin(map) {
-  if (map.coin && !state.coins.has(map.coin.id)) {
-    paintCoin(map.coin.tx * TILE + 8, map.coin.ty * TILE + 8, false);
+  for (const coin of mapCoins(map)) {
+    if (!state.coins.has(coin.id)) {
+      paintCoin(coin.tx * TILE + 8, coin.ty * TILE + 8, false);
+    }
   }
   for (const world of state.worldCoins) {
     if (world.mapId !== map.id || state.coins.has(world.id)) {
@@ -1464,7 +1478,7 @@ function drawHud() {
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
   ctx.fillText(state.map.name, 6, 12);
-  ctx.fillText(`${coinCount()}/3`, 210, 12);
+  ctx.fillText(`${coinCount()}/${COIN_TOTAL}`, 202, 12);
   if (nearMorenoExit()) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
     ctx.fillRect(36, 22, 184, 28);

@@ -1,5 +1,5 @@
 // Pegá acá la página donde se sacan las entradas de Medusa.
-// Vacío hasta que esté el link: la boletería igual exige las 3 monedas.
+// Vacío hasta que esté el link: la boletería igual exige las 6 monedas.
 window.TRIFULCA = {
   ticketUrl: "",
   tracks: [
