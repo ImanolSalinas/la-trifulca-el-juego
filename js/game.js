@@ -1234,6 +1234,13 @@ function onCanvasMove(event) {
 function bindHold(button, key) {
   const press = (event) => {
     event.preventDefault();
+    if (button.setPointerCapture && event.pointerId != null) {
+      try {
+        button.setPointerCapture(event.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+    }
     keys.add(key);
   };
   const release = (event) => {
@@ -1244,18 +1251,24 @@ function bindHold(button, key) {
   button.addEventListener("pointerup", release);
   button.addEventListener("pointerleave", release);
   button.addEventListener("pointercancel", release);
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 document.querySelectorAll("[data-dir]").forEach((button) => {
   bindHold(button, button.dataset.dir);
 });
 
-document.getElementById("talk").addEventListener("pointerdown", (event) => {
+const talkButton = document.getElementById("talk");
+talkButton.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   if (state.screen === "title") {
     startMusic();
   }
   talkQueued = true;
+});
+talkButton.addEventListener("contextmenu", (event) => event.preventDefault());
+document.getElementById("touch").addEventListener("selectstart", (event) => {
+  event.preventDefault();
 });
 
 const KEY_MAP = {

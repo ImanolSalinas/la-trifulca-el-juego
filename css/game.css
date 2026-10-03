@@ -38,6 +38,11 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .pad {
@@ -66,7 +71,7 @@ body {
   grid-row: 2;
 }
 
-button {
+#touch button {
   font-family: inherit;
   font-size: 10px;
   color: #f3e6c8;
@@ -75,14 +80,55 @@ button {
   min-width: 64px;
   min-height: 64px;
   padding: 8px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.pad button {
+  font-size: 0;
+  color: transparent;
+  position: relative;
+}
+
+.pad button::before {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  color: #f3e6c8;
+  pointer-events: none;
+}
+
+.pad button[data-dir="up"]::before {
+  content: "▲";
+}
+
+.pad button[data-dir="left"]::before {
+  content: "◀";
+}
+
+.pad button[data-dir="down"]::before {
+  content: "▼";
+}
+
+.pad button[data-dir="right"]::before {
+  content: "▶";
 }
 
 #talk {
   min-width: 112px;
 }
 
-button:active {
+#touch button:active {
   background: #c9a227;
+  color: #1a120e;
+}
+
+#touch .pad button:active::before {
   color: #1a120e;
 }
 
