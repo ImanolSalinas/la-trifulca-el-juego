@@ -50,8 +50,8 @@ const state = {
   suppressBoleteria: false,
   returnSpawn: { tx: 8, ty: 20 },
   hover: -1,
-  /** @type {null | { id: string, mapId: string, tx: number, ty: number, x: number, y: number, toss: null | { fromX: number, fromY: number, toX: number, toY: number, t: number, dur: number } }} */
-  worldCoin: null,
+  /** @type {{ id: string, mapId: string, tx: number, ty: number, x: number, y: number, toss: null | { fromX: number, fromY: number, toX: number, toY: number, t: number, dur: number } }[]} */
+  worldCoins: [],
 };
 
 function tileCenter(tile) {
@@ -387,17 +387,18 @@ function takeCoin() {
   if (coin && !state.coins.has(coin.id) && sameTile(playerTile(), coin)) {
     state.coins.add(coin.id);
   }
-  const world = state.worldCoin;
-  if (
-    world &&
-    !world.toss &&
-    world.mapId === state.map.id &&
-    !state.coins.has(world.id) &&
-    sameTile(playerTile(), world)
-  ) {
-    state.coins.add(world.id);
-    state.worldCoin = null;
-  }
+  state.worldCoins = state.worldCoins.filter((world) => {
+    if (
+      !world.toss &&
+      world.mapId === state.map.id &&
+      !state.coins.has(world.id) &&
+      sameTile(playerTile(), world)
+    ) {
+      state.coins.add(world.id);
+      return false;
+    }
+    return true;
+  });
 }
 
 function openDialogue(lines, action, quiz) {
@@ -417,7 +418,7 @@ function quizCoinPending(quiz) {
   if (state.coins.has(quiz.coinId)) {
     return true;
   }
-  return Boolean(state.worldCoin && state.worldCoin.id === quiz.coinId);
+  return state.worldCoins.some((coin) => coin.id === quiz.coinId);
 }
 
 function tossCoinFromNpc(npc, quiz) {
@@ -428,7 +429,7 @@ function tossCoinFromNpc(npc, quiz) {
   const land = quiz.land || { tx: npc.tx + 1, ty: npc.ty + 1 };
   const from = tileCenter(npc);
   const to = tileCenter(land);
-  state.worldCoin = {
+  state.worldCoins.push({
     id: coinId,
     mapId: state.map.id,
     tx: land.tx,
@@ -443,23 +444,24 @@ function tossCoinFromNpc(npc, quiz) {
       t: 0,
       dur: 0.75,
     },
-  };
+  });
 }
 
 function updateWorldCoin(dt) {
-  const coin = state.worldCoin;
-  if (!coin?.toss) {
-    return;
-  }
-  coin.toss.t += dt;
-  const u = Math.min(1, coin.toss.t / coin.toss.dur);
-  const arc = Math.sin(u * Math.PI) * 34;
-  coin.x = coin.toss.fromX + (coin.toss.toX - coin.toss.fromX) * u;
-  coin.y = coin.toss.fromY + (coin.toss.toY - coin.toss.fromY) * u - arc;
-  if (u >= 1) {
-    coin.x = coin.toss.toX;
-    coin.y = coin.toss.toY;
-    coin.toss = null;
+  for (const coin of state.worldCoins) {
+    if (!coin.toss) {
+      continue;
+    }
+    coin.toss.t += dt;
+    const u = Math.min(1, coin.toss.t / coin.toss.dur);
+    const arc = Math.sin(u * Math.PI) * 34;
+    coin.x = coin.toss.fromX + (coin.toss.toX - coin.toss.fromX) * u;
+    coin.y = coin.toss.fromY + (coin.toss.toY - coin.toss.fromY) * u - arc;
+    if (u >= 1) {
+      coin.x = coin.toss.toX;
+      coin.y = coin.toss.toY;
+      coin.toss = null;
+    }
   }
 }
 
@@ -980,11 +982,12 @@ function drawCoin(map) {
   if (map.coin && !state.coins.has(map.coin.id)) {
     paintCoin(map.coin.tx * TILE + 8, map.coin.ty * TILE + 8, false);
   }
-  const world = state.worldCoin;
-  if (!world || world.mapId !== map.id || state.coins.has(world.id)) {
-    return;
+  for (const world of state.worldCoins) {
+    if (world.mapId !== map.id || state.coins.has(world.id)) {
+      continue;
+    }
+    paintCoin(world.x, world.y, Boolean(world.toss));
   }
-  paintCoin(world.x, world.y, Boolean(world.toss));
 }
 
 const PIXEL = {
@@ -1217,8 +1220,9 @@ function drawDialogue() {
   }
   const last = state.dialogue.index >= state.dialogue.lines.length - 1;
   const showQuiz = Boolean(state.dialogue.quiz && last);
-  const boxY = showQuiz ? 78 : 150;
-  const boxH = showQuiz ? 138 : 66;
+  const optionCount = showQuiz ? state.dialogue.quiz.options.length : 0;
+  const boxH = showQuiz ? 40 + optionCount * 24 + 10 : 66;
+  const boxY = showQuiz ? Math.max(48, VIEW_H - boxH - 8) : 150;
 
   ctx.fillStyle = "#1a120e";
   ctx.fillRect(8, boxY, 240, boxH);
