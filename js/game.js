@@ -80,19 +80,11 @@ const BRAND = {
   cream: "#f4efe6",
 };
 
-const LOGO = new Image();
-LOGO.src = "assets/brand/logo.png?v=50";
+const TITLE_ART = new Image();
+TITLE_ART.src = "assets/brand/title.jpg?v=51";
 
-/** @type {{ x: number, y: number, vx: number, vy: number, life: number, size: number, color: string }[]} */
-const titleSparks = Array.from({ length: 28 }, () => ({
-  x: Math.random() * VIEW_W,
-  y: Math.random() * VIEW_H,
-  vx: (Math.random() - 0.5) * 12,
-  vy: -8 - Math.random() * 18,
-  life: Math.random(),
-  size: 1 + Math.random() * 2,
-  color: Math.random() > 0.35 ? BRAND.orange : BRAND.orangeHot,
-}));
+/** Hit zone for the baked-in JUGAR button on the title splash. */
+const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
 
 const PASILLO_ART = new Image();
 PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=34";
@@ -1106,27 +1098,20 @@ function drawDialogue() {
   return null;
 }
 
-function drawTitleSparks(now) {
-  const t = now / 1000;
-  for (const spark of titleSparks) {
-    spark.life += 0.008;
-    if (spark.life >= 1) {
-      spark.life = 0;
-      spark.x = VIEW_W * 0.28 + Math.random() * VIEW_W * 0.44;
-      spark.y = VIEW_H * 0.42 + Math.random() * 28;
-      spark.vx = (Math.random() - 0.5) * 22;
-      spark.vy = -10 - Math.random() * 24;
-      spark.size = 1 + Math.random() * 2.2;
-      spark.color = Math.random() > 0.4 ? BRAND.orange : BRAND.orangeHot;
-    }
-    const px = spark.x + spark.vx * spark.life;
-    const py = spark.y + spark.vy * spark.life + spark.life * spark.life * 10;
-    const alpha = (1 - spark.life) * (0.55 + 0.35 * Math.sin(t * 6 + spark.x));
-    ctx.globalAlpha = Math.max(0, alpha);
-    ctx.fillStyle = spark.color;
-    ctx.fillRect(px, py, spark.size, spark.size);
+function drawCoverImage(image) {
+  const iw = image.naturalWidth;
+  const ih = image.naturalHeight;
+  if (!iw || !ih) {
+    return;
   }
-  ctx.globalAlpha = 1;
+  const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = (VIEW_W - dw) / 2;
+  const dy = (VIEW_H - dh) / 2;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(image, dx, dy, dw, dh);
+  ctx.imageSmoothingEnabled = false;
 }
 
 function drawTitle() {
@@ -1134,57 +1119,14 @@ function drawTitle() {
   ctx.fillStyle = BRAND.black;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-  // Soft cyan wash behind the brand mark
-  const glow = ctx.createRadialGradient(VIEW_W / 2, VIEW_H * 0.42, 8, VIEW_W / 2, VIEW_H * 0.42, 120);
-  glow.addColorStop(0, "rgba(69, 177, 209, 0.28)");
-  glow.addColorStop(0.55, "rgba(224, 122, 42, 0.14)");
-  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  drawTitleSparks(now);
-
-  if (LOGO.complete && LOGO.naturalWidth) {
-    const pulse = 1 + Math.sin(now / 700) * 0.018;
-    const maxW = VIEW_W - 18;
-    const maxH = VIEW_H - 52;
-    const scale = Math.min(maxW / LOGO.naturalWidth, maxH / LOGO.naturalHeight) * pulse;
-    const dw = LOGO.naturalWidth * scale;
-    const dh = LOGO.naturalHeight * scale;
-    const dx = (VIEW_W - dw) / 2;
-    const dy = 4 + (maxH - dh) / 2;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(LOGO, dx, dy, dw, dh);
-    ctx.imageSmoothingEnabled = false;
-  } else {
-    ctx.fillStyle = BRAND.cyan;
-    ctx.beginPath();
-    ctx.moveTo(VIEW_W / 2, 28);
-    ctx.lineTo(214, 110);
-    ctx.lineTo(VIEW_W / 2, 192);
-    ctx.lineTo(42, 110);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = BRAND.black;
-    ctx.font = 'bold 18px "Arial Black", "Arial", sans-serif';
-    ctx.fillText("LA", 112, 96);
-    ctx.font = 'bold 22px "Arial Black", "Arial", sans-serif';
-    ctx.fillText("TRIFULCA", 68, 122);
+  if (TITLE_ART.complete && TITLE_ART.naturalWidth) {
+    drawCoverImage(TITLE_ART);
   }
 
-  ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillStyle = BRAND.cream;
-  const line = "Un pasillo. Tres puertas.";
-  ctx.fillText(line, (VIEW_W - ctx.measureText(line).width) / 2, 188);
-
-  const btnPulse = 0.92 + Math.sin(now / 420) * 0.08;
-  ctx.fillStyle = BRAND.cyan;
-  ctx.fillRect(78, 196, 100, 22);
-  ctx.fillStyle = BRAND.orange;
-  ctx.fillRect(78, 216, 100 * btnPulse, 2);
-  ctx.fillStyle = BRAND.black;
-  ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillText("Jugar", 100, 211);
+  // Soft pulse over the baked JUGAR so the CTA stays alive
+  const pulse = 0.12 + Math.sin(now / 380) * 0.08;
+  ctx.fillStyle = `rgba(69, 177, 209, ${pulse})`;
+  ctx.fillRect(TITLE_PLAY.x, TITLE_PLAY.y, TITLE_PLAY.w, TITLE_PLAY.h);
 }
 
 function characterRect(index) {
@@ -1281,7 +1223,7 @@ function hit(rect, point) {
 function onCanvasPointer(event) {
   const point = pointerPos(event);
   if (state.screen === "title") {
-    if (hit({ x: 78, y: 196, w: 100, h: 22 }, point)) {
+    if (hit(TITLE_PLAY, point)) {
       startMusic();
       state.screen = "select";
     }
