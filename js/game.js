@@ -158,10 +158,10 @@ function universalSolid(x, y) {
 }
 
 const MORENO_ART = new Image();
-MORENO_ART.src = "assets/places/moreno/plaza.png?v=66";
+MORENO_ART.src = "assets/places/moreno/plaza.png?v=67";
 
 const MORENO_COLLISION = new Image();
-MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=66";
+MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=67";
 /** @type {Uint8ClampedArray | null} */
 let morenoCollisionPixels = null;
 MORENO_COLLISION.addEventListener("load", () => {
@@ -617,9 +617,12 @@ function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const x = Math.max(0, Math.min(player.x - VIEW_W / 2, width - VIEW_W));
-  const y = Math.max(0, Math.min(player.y - VIEW_H / 2, height - VIEW_H));
-  return { x: Math.round(x), y: Math.round(y) };
+  const zoom = map.id === "moreno" ? Math.min(VIEW_W / width, VIEW_H / height) : 1;
+  const viewW = VIEW_W / zoom;
+  const viewH = VIEW_H / zoom;
+  const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
+  const y = viewH >= height ? (height - viewH) / 2 : Math.max(0, Math.min(player.y - viewH / 2, height - viewH));
+  return { x, y, zoom };
 }
 
 function checker(colors, tx, ty) {
@@ -1450,6 +1453,7 @@ function render() {
 
   const cam = camera();
   ctx.save();
+  ctx.scale(cam.zoom, cam.zoom);
   ctx.translate(-cam.x, -cam.y);
   drawFloorAndWalls(state.map);
   drawTilosProps(true);
