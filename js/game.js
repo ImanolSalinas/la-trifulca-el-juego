@@ -390,8 +390,36 @@ function takeCoin() {
   }
 }
 
-function openDialogue(lines, action) {
-  state.dialogue = { lines, index: 0, action: action ?? null };
+function openDialogue(lines, action, quiz) {
+  state.dialogue = {
+    lines,
+    index: 0,
+    action: action ?? null,
+    quiz: quiz ?? null,
+    choiceRects: null,
+  };
+}
+
+function awardCoin(id) {
+  if (!id || state.coins.has(id)) {
+    return false;
+  }
+  state.coins.add(id);
+  return true;
+}
+
+function answerQuiz(optionIndex) {
+  const dialogue = state.dialogue;
+  if (!dialogue?.quiz) {
+    return;
+  }
+  const quiz = dialogue.quiz;
+  if (optionIndex === quiz.correct) {
+    awardCoin(quiz.coinId);
+    openDialogue(quiz.win);
+    return;
+  }
+  openDialogue(quiz.lose);
 }
 
 function openBoleteriaDialogue() {
@@ -449,6 +477,10 @@ function talk() {
     return;
   }
   if (state.dialogue) {
+    if (state.dialogue.quiz && state.dialogue.index >= state.dialogue.lines.length - 1) {
+      // Waiting for an option tap; ignore plain talk advances.
+      return;
+    }
     const last = state.dialogue.index >= state.dialogue.lines.length - 1;
     if (!last) {
       state.dialogue.index += 1;
@@ -460,7 +492,11 @@ function talk() {
 
   const npc = nearbyNpc();
   if (npc) {
-    openDialogue([npc.name, ...npc.lines]);
+    if (npc.quiz) {
+      openDialogue(npc.lines, "quiz", npc.quiz);
+    } else {
+      openDialogue([npc.name, ...npc.lines]);
+    }
     return;
   }
   if (!atCounter()) {
@@ -982,12 +1018,51 @@ function drawWalkSheet(image, character, feetX, feetY, dir, frame) {
   );
 }
 
-function drawPeople(map) {
+/** @type {Record<string, HTMLImageElement>} */
+const npcPortraits = {};
+for (const map of Object.values(MAPS)) {
   for (const npc of map.npcs) {
+    if (!npc.portrait || npcPortraits[npc.id]) {
+      continue;
+    }
+    const image = new Image();
+    image.src = npc.portrait;
+    npcPortraits[npc.id] = image;
+  }
+}
+
+function drawTalkMark(feetX, feetY, spriteH) {
+  const x = Math.round(feetX);
+  const y = Math.round(feetY - spriteH - 10 + Math.sin(performance.now() / 220) * 2);
+  ctx.fillStyle = BRAND.cyan;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 10);
+  ctx.lineTo(x - 7, y);
+  ctx.lineTo(x + 7, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = BRAND.black;
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillText("!", x - 3, y + 1);
+}
+
+function drawPeople(map) {
+  const near = nearbyNpc();
+  for (const npc of map.npcs) {
+    const point = tileCenter(npc);
+    if (npc.visible && npc.sheet && npcPortraits[npc.id]) {
+      const image = npcPortraits[npc.id];
+      const dir = npc.dir || "down";
+      drawWalkSheet(image, { sheet: npc.sheet }, point.x, point.y + 6, dir, npc.sheet.idle);
+      if (near && near.id === npc.id && !state.dialogue) {
+        const h = npc.sheet.cellH * npc.sheet.scale;
+        drawTalkMark(point.x, point.y + 6, h);
+      }
+      continue;
+    }
     if (map.id === "frawens" || map.id === "tilos" || map.id === "pasillo" || map.id === "universal") {
       continue;
     }
-    const point = tileCenter(npc);
     drawActor(NPC_SPRITE, point.x, point.y, "down");
   }
   const character = player.character;
@@ -1069,17 +1144,43 @@ function drawDialogue() {
   if (!state.dialogue) {
     return null;
   }
+  const last = state.dialogue.index >= state.dialogue.lines.length - 1;
+  const showQuiz = Boolean(state.dialogue.quiz && last);
+  const boxY = showQuiz ? 78 : 150;
+  const boxH = showQuiz ? 138 : 66;
+
   ctx.fillStyle = "#1a120e";
-  ctx.fillRect(8, 150, 240, 66);
-  ctx.strokeStyle = "#c9a227";
-  ctx.strokeRect(8.5, 150.5, 239, 65);
+  ctx.fillRect(8, boxY, 240, boxH);
+  ctx.strokeStyle = BRAND.cyan;
+  ctx.strokeRect(8.5, boxY + 0.5, 239, boxH - 1);
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
   const lines = wrapText(state.dialogue.lines[state.dialogue.index], 220);
   lines.forEach((line, index) => {
-    ctx.fillText(line, 16, 168 + index * 12);
+    ctx.fillText(line, 16, boxY + 18 + index * 12);
   });
-  const last = state.dialogue.index >= state.dialogue.lines.length - 1;
+
+  if (showQuiz) {
+    const options = state.dialogue.quiz.options;
+    const startY = boxY + 36;
+    /** @type {{ kind: string, index: number, x: number, y: number, w: number, h: number }[]} */
+    const rects = [];
+    options.forEach((option, index) => {
+      const y = startY + index * 24;
+      ctx.fillStyle = BRAND.orange;
+      ctx.fillRect(16, y, 224, 20);
+      ctx.fillStyle = BRAND.black;
+      ctx.font = '7px "Press Start 2P", monospace';
+      const label = wrapText(option, 210)[0];
+      ctx.fillText(label, 22, y + 13);
+      ctx.font = '8px "Press Start 2P", monospace';
+      rects.push({ kind: "quiz", index, x: 16, y, w: 224, h: 20 });
+    });
+    state.dialogue.choiceRects = rects;
+    return { kind: "quiz", rects };
+  }
+
+  state.dialogue.choiceRects = null;
   const showTicket = state.dialogue.action === "ticket" && last;
   if (showTicket) {
     ctx.fillStyle = "#c9a227";
@@ -1238,6 +1339,13 @@ function onCanvasPointer(event) {
         state.screen = "play";
       }
     });
+    return;
+  }
+  if (ticketRect?.kind === "quiz" && Array.isArray(ticketRect.rects)) {
+    const choice = ticketRect.rects.find((rect) => hit(rect, point));
+    if (choice) {
+      answerQuiz(choice.index);
+    }
     return;
   }
   if (ticketRect && hit(ticketRect, point)) {
