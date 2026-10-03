@@ -6,8 +6,8 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #100c0a;
-  color: #f3e6c8;
+  background: #000000;
+  color: #f4efe6;
   font-family: "Press Start 2P", monospace;
 }
 
@@ -28,7 +28,7 @@ body {
 #game {
   width: min(100%, calc((100dvh - 160px) * 256 / 224));
   height: auto;
-  background: #100c0a;
+  background: #000000;
   touch-action: none;
 }
 
@@ -74,9 +74,9 @@ body {
 #touch button {
   font-family: inherit;
   font-size: 10px;
-  color: #f3e6c8;
-  background: #2a211c;
-  border: 3px solid #c9a227;
+  color: #f4efe6;
+  background: #0a0c0e;
+  border: 3px solid #45b1d1;
   min-width: 64px;
   min-height: 64px;
   padding: 8px;
@@ -99,7 +99,7 @@ body {
   display: grid;
   place-items: center;
   font-size: 18px;
-  color: #f3e6c8;
+  color: #f4efe6;
   pointer-events: none;
 }
 
@@ -124,12 +124,13 @@ body {
 }
 
 #touch button:active {
-  background: #c9a227;
-  color: #1a120e;
+  background: #e07a2a;
+  border-color: #e07a2a;
+  color: #000000;
 }
 
 #touch .pad button:active::before {
-  color: #1a120e;
+  color: #000000;
 }
 
 @media (pointer: fine) {

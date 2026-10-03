@@ -71,6 +71,29 @@ const TILOS_PLACE = {
   path: { x: 292, y: 286, w: 56, h: 190 },
 };
 
+const BRAND = {
+  black: "#000000",
+  cyan: "#45b1d1",
+  cyanDeep: "#2a8fb0",
+  orange: "#e07a2a",
+  orangeHot: "#ff9a3c",
+  cream: "#f4efe6",
+};
+
+const LOGO = new Image();
+LOGO.src = "assets/brand/logo.png?v=50";
+
+/** @type {{ x: number, y: number, vx: number, vy: number, life: number, size: number, color: string }[]} */
+const titleSparks = Array.from({ length: 28 }, () => ({
+  x: Math.random() * VIEW_W,
+  y: Math.random() * VIEW_H,
+  vx: (Math.random() - 0.5) * 12,
+  vy: -8 - Math.random() * 18,
+  life: Math.random(),
+  size: 1 + Math.random() * 2,
+  color: Math.random() > 0.35 ? BRAND.orange : BRAND.orangeHot,
+}));
+
 const PASILLO_ART = new Image();
 PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=34";
 
@@ -1083,19 +1106,85 @@ function drawDialogue() {
   return null;
 }
 
+function drawTitleSparks(now) {
+  const t = now / 1000;
+  for (const spark of titleSparks) {
+    spark.life += 0.008;
+    if (spark.life >= 1) {
+      spark.life = 0;
+      spark.x = VIEW_W * 0.28 + Math.random() * VIEW_W * 0.44;
+      spark.y = VIEW_H * 0.42 + Math.random() * 28;
+      spark.vx = (Math.random() - 0.5) * 22;
+      spark.vy = -10 - Math.random() * 24;
+      spark.size = 1 + Math.random() * 2.2;
+      spark.color = Math.random() > 0.4 ? BRAND.orange : BRAND.orangeHot;
+    }
+    const px = spark.x + spark.vx * spark.life;
+    const py = spark.y + spark.vy * spark.life + spark.life * spark.life * 10;
+    const alpha = (1 - spark.life) * (0.55 + 0.35 * Math.sin(t * 6 + spark.x));
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = spark.color;
+    ctx.fillRect(px, py, spark.size, spark.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawTitle() {
-  ctx.fillStyle = "#100c0a";
+  const now = performance.now();
+  ctx.fillStyle = BRAND.black;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  ctx.font = '16px "Press Start 2P", monospace';
-  ctx.fillStyle = "#f2d24b";
-  ctx.fillText("LA TRIFULCA", 28, 78);
+
+  // Soft cyan wash behind the brand mark
+  const glow = ctx.createRadialGradient(VIEW_W / 2, VIEW_H * 0.42, 8, VIEW_W / 2, VIEW_H * 0.42, 120);
+  glow.addColorStop(0, "rgba(69, 177, 209, 0.28)");
+  glow.addColorStop(0.55, "rgba(224, 122, 42, 0.14)");
+  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  drawTitleSparks(now);
+
+  if (LOGO.complete && LOGO.naturalWidth) {
+    const pulse = 1 + Math.sin(now / 700) * 0.018;
+    const maxW = VIEW_W - 18;
+    const maxH = VIEW_H - 52;
+    const scale = Math.min(maxW / LOGO.naturalWidth, maxH / LOGO.naturalHeight) * pulse;
+    const dw = LOGO.naturalWidth * scale;
+    const dh = LOGO.naturalHeight * scale;
+    const dx = (VIEW_W - dw) / 2;
+    const dy = 4 + (maxH - dh) / 2;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(LOGO, dx, dy, dw, dh);
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    ctx.fillStyle = BRAND.cyan;
+    ctx.beginPath();
+    ctx.moveTo(VIEW_W / 2, 28);
+    ctx.lineTo(214, 110);
+    ctx.lineTo(VIEW_W / 2, 192);
+    ctx.lineTo(42, 110);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = BRAND.black;
+    ctx.font = 'bold 18px "Arial Black", "Arial", sans-serif';
+    ctx.fillText("LA", 112, 96);
+    ctx.font = 'bold 22px "Arial Black", "Arial", sans-serif';
+    ctx.fillText("TRIFULCA", 68, 122);
+  }
+
+  ctx.font = '7px "Press Start 2P", monospace';
+  ctx.fillStyle = BRAND.cream;
+  const line = "Un pasillo. Tres puertas.";
+  ctx.fillText(line, (VIEW_W - ctx.measureText(line).width) / 2, 188);
+
+  const btnPulse = 0.92 + Math.sin(now / 420) * 0.08;
+  ctx.fillStyle = BRAND.cyan;
+  ctx.fillRect(78, 196, 100, 22);
+  ctx.fillStyle = BRAND.orange;
+  ctx.fillRect(78, 216, 100 * btnPulse, 2);
+  ctx.fillStyle = BRAND.black;
   ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillStyle = "#f3e6c8";
-  ctx.fillText("Un pasillo. Tres puertas.", 22, 108);
-  ctx.fillStyle = "#c9a227";
-  ctx.fillRect(78, 140, 100, 28);
-  ctx.fillStyle = "#1a120e";
-  ctx.fillText("Jugar", 100, 158);
+  ctx.fillText("Jugar", 100, 211);
 }
 
 function characterRect(index) {
@@ -1105,15 +1194,15 @@ function characterRect(index) {
 }
 
 function drawSelect() {
-  ctx.fillStyle = "#100c0a";
+  ctx.fillStyle = BRAND.black;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillStyle = "#f2d24b";
+  ctx.fillStyle = BRAND.cyan;
   const title = "Elegí integrante";
   ctx.fillText(title, (VIEW_W - ctx.measureText(title).width) / 2, 14);
   CHARACTERS.forEach((character, index) => {
     const rect = characterRect(index);
-    ctx.fillStyle = "#2a211c";
+    ctx.fillStyle = "#101418";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     const photo = portraits[character.id];
     if (character.sheet && photo.complete && photo.naturalWidth) {
@@ -1136,12 +1225,12 @@ function drawSelect() {
         dh,
       );
     }
-    ctx.strokeStyle = state.hover === index ? "#c9a227" : "#5a4636";
+    ctx.strokeStyle = state.hover === index ? BRAND.orange : BRAND.cyanDeep;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
-    ctx.fillStyle = "#f3e6c8";
+    ctx.fillStyle = BRAND.cream;
     const nameWidth = ctx.measureText(character.name).width;
     ctx.fillText(character.name, rect.x + (rect.w - nameWidth) / 2, rect.y + 48);
-    ctx.fillStyle = "#cbb89a";
+    ctx.fillStyle = BRAND.cyan;
     const roleWidth = ctx.measureText(character.role).width;
     ctx.fillText(character.role, rect.x + (rect.w - roleWidth) / 2, rect.y + 60);
   });
@@ -1192,7 +1281,7 @@ function hit(rect, point) {
 function onCanvasPointer(event) {
   const point = pointerPos(event);
   if (state.screen === "title") {
-    if (hit({ x: 78, y: 140, w: 100, h: 28 }, point)) {
+    if (hit({ x: 78, y: 196, w: 100, h: 22 }, point)) {
       startMusic();
       state.screen = "select";
     }
