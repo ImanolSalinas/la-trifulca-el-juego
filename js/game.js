@@ -157,6 +157,39 @@ function universalSolid(x, y) {
   return !cell || cell === "#";
 }
 
+const MORENO_ART = new Image();
+MORENO_ART.src = "assets/places/moreno/plaza.png?v=62";
+
+const MORENO_COLLISION = new Image();
+MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=62";
+/** @type {Uint8ClampedArray | null} */
+let morenoCollisionPixels = null;
+MORENO_COLLISION.addEventListener("load", () => {
+  const board = document.createElement("canvas");
+  board.width = MORENO_COLLISION.naturalWidth;
+  board.height = MORENO_COLLISION.naturalHeight;
+  const boardCtx = board.getContext("2d");
+  boardCtx.drawImage(MORENO_COLLISION, 0, 0);
+  morenoCollisionPixels = boardCtx.getImageData(0, 0, board.width, board.height).data;
+});
+
+function morenoSolid(x, y) {
+  const mapW = 48 * TILE;
+  const mapH = 24 * TILE;
+  if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
+    return true;
+  }
+  if (morenoCollisionPixels && MORENO_COLLISION.naturalWidth) {
+    const px = Math.min(MORENO_COLLISION.naturalWidth - 1, Math.max(0, Math.floor(x)));
+    const py = Math.min(MORENO_COLLISION.naturalHeight - 1, Math.max(0, Math.floor(y)));
+    return morenoCollisionPixels[(py * MORENO_COLLISION.naturalWidth + px) * 4] < 128;
+  }
+  const tx = Math.floor(x / TILE);
+  const ty = Math.floor(y / TILE);
+  const cell = state.map.rows[ty]?.[tx];
+  return !cell || cell === "#";
+}
+
 const TILOS_ART = {};
 for (const [name, file] of [
   ["grass", "grass.jpg"],
@@ -264,6 +297,9 @@ function solidAt(map, x, y) {
   }
   if (map.id === "universal") {
     return universalSolid(x, y);
+  }
+  if (map.id === "moreno") {
+    return morenoSolid(x, y);
   }
   const tx = Math.floor(x / TILE);
   const ty = Math.floor(y / TILE);
@@ -702,6 +738,10 @@ function drawUniversal() {
   drawVenueArt(UNIVERSAL_ART, "#2a2e34");
 }
 
+function drawMoreno() {
+  drawVenueArt(MORENO_ART, "#c4b49a");
+}
+
 function drawFloorAndWalls(map) {
   if (map.id === "pasillo") {
     drawPasillo();
@@ -713,6 +753,10 @@ function drawFloorAndWalls(map) {
   }
   if (map.id === "universal") {
     drawUniversal();
+    return;
+  }
+  if (map.id === "moreno") {
+    drawMoreno();
     return;
   }
   if (map.id === "tilos") {
@@ -940,8 +984,17 @@ function drawTilosLights(map) {
 }
 
 function drawDoors(map) {
-  if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal") {
-    if (map.id === "frawens" || map.id === "universal") {
+  if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
+    if (map.id === "pasillo") {
+      for (const door of map.doors) {
+        if (door.to !== "moreno") {
+          continue;
+        }
+        ctx.fillStyle = "rgba(69, 177, 209, 0.45)";
+        ctx.fillRect(door.tx * TILE + 2, door.ty * TILE + 2, 12, 12);
+      }
+    }
+    if (map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
       for (const exit of map.exits) {
         ctx.fillStyle = "rgba(230, 195, 106, 0.55)";
         ctx.fillRect(exit.tx * TILE + 3, exit.ty * TILE + 3, 10, 10);
@@ -1134,7 +1187,13 @@ function drawPeople(map) {
       }
       continue;
     }
-    if (map.id === "frawens" || map.id === "tilos" || map.id === "pasillo" || map.id === "universal") {
+    if (
+      map.id === "frawens" ||
+      map.id === "tilos" ||
+      map.id === "pasillo" ||
+      map.id === "universal" ||
+      map.id === "moreno"
+    ) {
       continue;
     }
     drawActor(NPC_SPRITE, point.x, point.y, "down");
@@ -1169,11 +1228,21 @@ function drawSigns(map) {
 }
 
 function drawLabels(map, cam) {
-  if (map.id === "pasillo") {
-    return;
-  }
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
+  if (map.id === "pasillo") {
+    for (const door of map.doors) {
+      if (!door.label || door.to !== "moreno") {
+        continue;
+      }
+      const text = door.label;
+      const x = door.tx * TILE + 8 - ctx.measureText(text).width / 2 - cam.x;
+      const y = door.ty * TILE - 2 - cam.y;
+      ctx.fillStyle = BRAND.cyan;
+      ctx.fillText(text, x, y);
+    }
+    return;
+  }
   for (const door of map.doors) {
     if (!door.label) {
       continue;
