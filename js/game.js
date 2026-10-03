@@ -76,6 +76,8 @@ const state = {
   dialogue: null,
   suppressDoor: false,
   suppressBoleteria: false,
+  suppressJose: false,
+  gates: { frawens: false },
   returnSpawn: { tx: 8, ty: 20 },
   hover: -1,
   /** @type {{ id: string, mapId: string, tx: number, ty: number, x: number, y: number, toss: null | { fromX: number, fromY: number, toX: number, toY: number, t: number, dur: number } }[]} */
@@ -94,6 +96,7 @@ function placePlayer(tile) {
   player.x = point.x;
   player.y = point.y;
   state.suppressDoor = true;
+  state.suppressJose = true;
 }
 
 const TILOS_PLACE = {
@@ -120,13 +123,13 @@ const PASILLO_ART = new Image();
 PASILLO_ART.src = "assets/places/pasillo/pasillo.png?v=80";
 
 const FRAWENS_ART = new Image();
-FRAWENS_ART.src = "assets/places/frawens/salon.png?v=74";
+FRAWENS_ART.src = "assets/places/frawens/salon.png?v=81";
 
 const FRAWENS_BALLS = new Image();
-FRAWENS_BALLS.src = "assets/places/frawens/balls.png?v=74";
+FRAWENS_BALLS.src = "assets/places/frawens/balls.png?v=82";
 
 const FRAWENS_COLLISION = new Image();
-FRAWENS_COLLISION.src = "assets/places/frawens/collision-game.png?v=72";
+FRAWENS_COLLISION.src = "assets/places/frawens/collision-game.png?v=83";
 /** @type {Uint8ClampedArray | null} */
 let frawensCollisionPixels = null;
 FRAWENS_COLLISION.addEventListener("load", () => {
@@ -139,9 +142,16 @@ FRAWENS_COLLISION.addEventListener("load", () => {
 });
 
 function frawensSolid(x, y) {
-  const mapW = 24 * TILE;
-  const mapH = 28 * TILE;
+  const mapW = state.map.rows[0].length * TILE;
+  const mapH = state.map.rows.length * TILE;
   if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
+    return true;
+  }
+  const tx = Math.floor(x / TILE);
+  const ty = Math.floor(y / TILE);
+  const doorClosed = !state.gates.frawens && ty === 24 && tx >= 8 && tx <= 11;
+  const joseStands = ty === 25 && tx === 12;
+  if (doorClosed || joseStands) {
     return true;
   }
   if (frawensCollisionPixels && FRAWENS_COLLISION.naturalWidth) {
@@ -149,8 +159,6 @@ function frawensSolid(x, y) {
     const py = Math.min(FRAWENS_COLLISION.naturalHeight - 1, Math.max(0, Math.floor(y)));
     return frawensCollisionPixels[(py * FRAWENS_COLLISION.naturalWidth + px) * 4] < 128;
   }
-  const tx = Math.floor(x / TILE);
-  const ty = Math.floor(y / TILE);
   const cell = state.map.rows[ty]?.[tx];
   return !cell || cell === "#" || cell === "B" || cell === "T" || cell === "P" || cell === "S";
 }
@@ -584,6 +592,10 @@ function answerQuiz(optionIndex) {
   const quiz = dialogue.quiz;
   if (optionIndex === quiz.correct) {
     openDialogue(quiz.win);
+    if (quiz.gate) {
+      state.gates[quiz.gate] = true;
+      return;
+    }
     const npc = state.map.npcs.find((entry) => entry.quiz === quiz) || nearbyNpc();
     if (npc) {
       tossCoinFromNpc(npc, quiz);
@@ -643,6 +655,29 @@ function checkBoleteria() {
   openBoleteriaDialogue();
 }
 
+function checkJose() {
+  if (state.map.id !== "frawens" || state.dialogue || state.gates.frawens) {
+    return;
+  }
+  const jose = state.map.npcs.find((npc) => npc.id === "jose");
+  if (!jose) {
+    return;
+  }
+  const here = playerTile();
+  const atDoor = here.ty === 24 || here.ty === 25;
+  if (!atDoor || !keys.has("up")) {
+    if (!keys.has("up")) {
+      state.suppressJose = false;
+    }
+    return;
+  }
+  if (state.suppressJose) {
+    return;
+  }
+  state.suppressJose = true;
+  openDialogue(jose.lines, "quiz", jose.quiz);
+}
+
 function talk() {
   if (state.screen !== "play") {
     return;
@@ -664,7 +699,9 @@ function talk() {
   const npc = nearbyNpc();
   if (npc) {
     if (npc.quiz) {
-      if (quizCoinPending(npc.quiz)) {
+      if (npc.quiz.gate && state.gates[npc.quiz.gate]) {
+        openDialogue(npc.quiz.done || ["Pasá."]);
+      } else if (quizCoinPending(npc.quiz)) {
         openDialogue(npc.quiz.done || ["Ya te di la moneda."]);
       } else {
         openDialogue(npc.lines, "quiz", npc.quiz);
@@ -1794,6 +1831,7 @@ function frame(now) {
     takeCoin();
     checkTransitions();
     checkBoleteria();
+    checkJose();
   }
   render();
   requestAnimationFrame(frame);
