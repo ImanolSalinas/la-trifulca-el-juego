@@ -159,7 +159,7 @@ const UNIVERSAL_ART = new Image();
 UNIVERSAL_ART.src = "assets/places/universal/street.png?v=45";
 
 const UNIVERSAL_COLLISION = new Image();
-UNIVERSAL_COLLISION.src = "assets/places/universal/collision-game.png?v=45";
+UNIVERSAL_COLLISION.src = "assets/places/universal/collision-game.png?v=50";
 /** @type {Uint8ClampedArray | null} */
 let universalCollisionPixels = null;
 UNIVERSAL_COLLISION.addEventListener("load", () => {
@@ -435,10 +435,11 @@ function nearbyNpc() {
   for (const npc of state.map.npcs) {
     const point = tileCenter(npc);
     const distance = Math.hypot(player.x - point.x, player.y - point.y);
-    if (distance < best) {
-      best = distance;
-      found = npc;
+    if (npc.silent || distance >= best) {
+      continue;
     }
+    best = distance;
+    found = npc;
   }
   return found;
 }
@@ -655,7 +656,7 @@ function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const zoom = map.id === "moreno" ? 0.28 : map.id === "tilos" ? 0.72 : 1;
+  const zoom = map.id === "moreno" ? 0.28 : map.id === "tilos" || map.id === "universal" ? 0.72 : 1;
   const viewW = VIEW_W / zoom;
   const viewH = VIEW_H / zoom;
   const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
@@ -1248,13 +1249,15 @@ function drawTalkMark(feetX, feetY, spriteH) {
 function drawPeople(map) {
   for (const npc of map.npcs) {
     const point = tileCenter(npc);
+    const x = point.x + (npc.ox || 0);
+    const y = point.y + (npc.oy || 0);
     if (npc.visible && npc.sheet && npcPortraits[npc.id]) {
       const image = npcPortraits[npc.id];
       const dir = npc.dir || "down";
-      drawWalkSheet(image, { sheet: npc.sheet }, point.x, point.y + 6, dir, npc.sheet.idle);
-      if (!state.dialogue) {
+      drawWalkSheet(image, { sheet: npc.sheet }, x, y + 6, dir, npc.sheet.idle);
+      if (!npc.silent && !state.dialogue) {
         const h = npc.sheet.cellH * npc.sheet.scale;
-        drawTalkMark(point.x, point.y + 6, h);
+        drawTalkMark(x, y + 6, h);
       }
       continue;
     }
