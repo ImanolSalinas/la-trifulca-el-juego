@@ -30,8 +30,6 @@ body {
   height: auto;
   background: #000000;
   touch-action: none;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }
 
 #touch {
@@ -142,8 +140,6 @@ body {
 
   #game {
     width: min(92vw, calc(92dvh * 256 / 224));
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
   }
 
   #touch {
