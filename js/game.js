@@ -117,7 +117,7 @@ TITLE_ART.src = "assets/brand/title.jpg?v=51";
 const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
 
 const PASILLO_ART = new Image();
-PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=71";
+PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=79";
 
 const FRAWENS_ART = new Image();
 FRAWENS_ART.src = "assets/places/frawens/salon.png?v=74";
@@ -203,6 +203,39 @@ MORENO_COLLISION.addEventListener("load", () => {
   boardCtx.drawImage(MORENO_COLLISION, 0, 0);
   morenoCollisionPixels = boardCtx.getImageData(0, 0, board.width, board.height).data;
 });
+
+const GATOS_ART = new Image();
+GATOS_ART.src = "assets/places/gatos/ciudad.png?v=1";
+
+const GATOS_COLLISION = new Image();
+GATOS_COLLISION.src = "assets/places/gatos/collision-game.png?v=1";
+/** @type {Uint8ClampedArray | null} */
+let gatosCollisionPixels = null;
+GATOS_COLLISION.addEventListener("load", () => {
+  const board = document.createElement("canvas");
+  board.width = GATOS_COLLISION.naturalWidth;
+  board.height = GATOS_COLLISION.naturalHeight;
+  const boardCtx = board.getContext("2d");
+  boardCtx.drawImage(GATOS_COLLISION, 0, 0);
+  gatosCollisionPixels = boardCtx.getImageData(0, 0, board.width, board.height).data;
+});
+
+function gatosSolid(x, y) {
+  const mapW = 18 * TILE;
+  const mapH = 12 * TILE;
+  if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
+    return true;
+  }
+  if (gatosCollisionPixels && GATOS_COLLISION.naturalWidth) {
+    const px = Math.min(GATOS_COLLISION.naturalWidth - 1, Math.max(0, Math.floor(x / mapW * GATOS_COLLISION.naturalWidth)));
+    const py = Math.min(GATOS_COLLISION.naturalHeight - 1, Math.max(0, Math.floor(y / mapH * GATOS_COLLISION.naturalHeight)));
+    return gatosCollisionPixels[(py * GATOS_COLLISION.naturalWidth + px) * 4] < 128;
+  }
+  const tx = Math.floor(x / TILE);
+  const ty = Math.floor(y / TILE);
+  const cell = state.map.rows[ty]?.[tx];
+  return !cell || cell === "#";
+}
 
 function morenoSolid(x, y) {
   const mapW = 110 * TILE;
@@ -338,6 +371,9 @@ function solidAt(map, x, y) {
   }
   if (map.id === "moreno") {
     return morenoSolid(x, y);
+  }
+  if (map.id === "gatos") {
+    return gatosSolid(x, y);
   }
   const tx = Math.floor(x / TILE);
   const ty = Math.floor(y / TILE);
@@ -807,6 +843,10 @@ function drawUniversal() {
   drawVenueArt(UNIVERSAL_ART, "#2a2e34");
 }
 
+function drawGatos() {
+  drawVenueArt(GATOS_ART, "#3a2a22");
+}
+
 function drawMoreno() {
   const mapW = state.map.rows[0].length * TILE;
   const mapH = state.map.rows.length * TILE;
@@ -838,6 +878,10 @@ function drawFloorAndWalls(map) {
   }
   if (map.id === "moreno") {
     drawMoreno();
+    return;
+  }
+  if (map.id === "gatos") {
+    drawGatos();
     return;
   }
   if (map.id === "tilos") {
@@ -1107,6 +1151,24 @@ function drawDoors(map) {
     }
     return;
   }
+  if (map.id === "gatos") {
+    if (map.exits.length) {
+      let x = 0;
+      let y = 0;
+      for (const exit of map.exits) {
+        const point = tileCenter(exit);
+        x += point.x;
+        y += point.y;
+      }
+      x /= map.exits.length;
+      y /= map.exits.length;
+      ctx.fillStyle = "#1a120e";
+      ctx.fillRect(x - 7, y - 7, 14, 14);
+      ctx.fillStyle = "#e6c36a";
+      ctx.fillRect(x - 5, y - 5, 10, 10);
+    }
+    return;
+  }
   if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal") {
     if (map.id === "frawens" || map.id === "universal") {
       for (const exit of map.exits) {
@@ -1308,7 +1370,8 @@ function drawPeople(map) {
       map.id === "tilos" ||
       map.id === "pasillo" ||
       map.id === "universal" ||
-      map.id === "moreno"
+      map.id === "moreno" ||
+      map.id === "gatos"
     ) {
       continue;
     }
