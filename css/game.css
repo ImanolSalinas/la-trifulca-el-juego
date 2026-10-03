@@ -25,11 +25,41 @@ body {
   padding: 12px;
 }
 
-#game {
+#stage {
+  position: relative;
   width: min(100%, calc((100dvh - 160px) * 256 / 224));
+}
+
+#game {
+  width: 100%;
   height: auto;
   background: #000000;
   touch-action: none;
+  display: block;
+}
+
+#mute {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #f4efe6;
+  background: #0a0c0e;
+  border: 3px solid #45b1d1;
+  padding: 8px 10px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#mute[aria-pressed="true"] {
+  color: #000000;
+  background: #e07a2a;
+  border-color: #e07a2a;
 }
 
 #touch {
@@ -138,7 +168,7 @@ body {
     gap: 0;
   }
 
-  #game {
+  #stage {
     width: min(92vw, calc(92dvh * 256 / 224));
   }
 

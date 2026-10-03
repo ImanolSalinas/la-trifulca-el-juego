@@ -5,6 +5,23 @@ const SPEED = 78;
 const audio = new Audio();
 let trackIndex = 0;
 let musicStarted = false;
+let musicMuted = false;
+const muteButton = document.getElementById("mute");
+
+function updateMuteButton() {
+  muteButton.setAttribute("aria-pressed", musicMuted ? "true" : "false");
+  muteButton.setAttribute("aria-label", musicMuted ? "Activar música" : "Silenciar música");
+  muteButton.textContent = musicMuted ? "Mudo" : "Sonido";
+}
+
+function setMusicMuted(muted) {
+  musicMuted = muted;
+  audio.muted = muted;
+  updateMuteButton();
+  if (!muted) {
+    startMusic();
+  }
+}
 
 function startMusic() {
   const tracks = window.TRIFULCA.tracks;
@@ -14,6 +31,7 @@ function startMusic() {
   if (!musicStarted) {
     musicStarted = true;
     audio.volume = 0.45;
+    audio.muted = musicMuted;
     audio.src = encodeURI(tracks[0]);
     audio.addEventListener("ended", () => {
       trackIndex = (trackIndex + 1) % tracks.length;
@@ -21,8 +39,18 @@ function startMusic() {
       audio.play().catch(() => {});
     });
   }
+  audio.muted = musicMuted;
+  if (musicMuted) {
+    return;
+  }
   audio.play().catch(() => {});
 }
+
+muteButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  setMusicMuted(!musicMuted);
+});
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
