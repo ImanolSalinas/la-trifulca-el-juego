@@ -2,7 +2,7 @@
 
 (() => {
 const TILE = 16;
-const WORLD_PX = 12;
+const WORLD_PX = 24;
 
 /** @type {readonly { id: string, name: string, role: string, portrait: string, sheet?: { cellW: number, cellH: number, idle: number, walk: readonly number[], foot: number, scale: number, dirs: Record<string, number> } }[]} */
 const CHARACTERS = [
