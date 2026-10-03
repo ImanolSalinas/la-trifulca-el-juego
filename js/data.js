@@ -428,14 +428,14 @@ const MAPS = {
         name: "Nachito Saralegui",
         dir: "down",
         visible: true,
-        portrait: "assets/nachito-walk.png?v=57",
+        portrait: "assets/nachito-walk.png?v=58",
         sheet: {
           cellW: 140,
           cellH: 205,
           idle: 0,
           walk: [0, 0, 0, 0],
           foot: 2,
-          scale: WORLD_PX / 205,
+          scale: WORLD_PX / 165,
           dirs: { down: 0, right: 1, up: 2, left: 3 },
         },
         lines: [
