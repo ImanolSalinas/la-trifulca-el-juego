@@ -1047,14 +1047,13 @@ function drawTalkMark(feetX, feetY, spriteH) {
 }
 
 function drawPeople(map) {
-  const near = nearbyNpc();
   for (const npc of map.npcs) {
     const point = tileCenter(npc);
     if (npc.visible && npc.sheet && npcPortraits[npc.id]) {
       const image = npcPortraits[npc.id];
       const dir = npc.dir || "down";
       drawWalkSheet(image, { sheet: npc.sheet }, point.x, point.y + 6, dir, npc.sheet.idle);
-      if (near && near.id === npc.id && !state.dialogue) {
+      if (!state.dialogue) {
         const h = npc.sheet.cellH * npc.sheet.scale;
         drawTalkMark(point.x, point.y + 6, h);
       }

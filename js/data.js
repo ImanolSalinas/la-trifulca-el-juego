@@ -423,19 +423,20 @@ const MAPS = {
     npcs: [
       {
         id: "nachito",
-        tx: 11,
-        ty: 15,
+        tx: 18,
+        ty: 13,
         name: "Nachito Saralegui",
         dir: "down",
         visible: true,
-        portrait: "assets/nachito-walk.png?v=55",
+        portrait: "assets/nachito-walk.png?v=56",
         sheet: {
           cellW: 82,
           cellH: 188,
           idle: 0,
           walk: [0, 0, 0, 0],
           foot: 2,
-          scale: WORLD_PX / 188,
+          // Match band member on-screen bulk (sheet is narrower than musicians).
+          scale: WORLD_PX / 110,
           dirs: { down: 0, right: 1, up: 2, left: 3 },
         },
         lines: [
