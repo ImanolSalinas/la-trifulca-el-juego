@@ -89,7 +89,7 @@ TITLE_ART.src = "assets/brand/title.jpg?v=51";
 const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
 
 const PASILLO_ART = new Image();
-PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=34";
+PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=69";
 
 const FRAWENS_ART = new Image();
 FRAWENS_ART.src = "assets/places/frawens/salon.png?v=38";
@@ -1000,15 +1000,6 @@ function drawTilosLights(map) {
 
 function drawDoors(map) {
   if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
-    if (map.id === "pasillo") {
-      for (const door of map.doors) {
-        if (door.to !== "moreno") {
-          continue;
-        }
-        ctx.fillStyle = "rgba(69, 177, 209, 0.45)";
-        ctx.fillRect(door.tx * TILE + 2, door.ty * TILE + 2, 12, 12);
-      }
-    }
     if (map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
       for (const exit of map.exits) {
         ctx.fillStyle = "rgba(230, 195, 106, 0.55)";
@@ -1246,16 +1237,6 @@ function drawLabels(map, cam) {
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
   if (map.id === "pasillo") {
-    for (const door of map.doors) {
-      if (!door.label || door.to !== "moreno") {
-        continue;
-      }
-      const text = door.label;
-      const x = door.tx * TILE + 8 - ctx.measureText(text).width / 2 - cam.x;
-      const y = door.ty * TILE - 2 - cam.y;
-      ctx.fillStyle = BRAND.cyan;
-      ctx.fillText(text, x, y);
-    }
     return;
   }
   for (const door of map.doors) {
