@@ -117,7 +117,7 @@ TITLE_ART.src = "assets/brand/title.jpg?v=51";
 const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
 
 const PASILLO_ART = new Image();
-PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=70";
+PASILLO_ART.src = "assets/places/pasillo/backstage.jpg?v=71";
 
 const FRAWENS_ART = new Image();
 FRAWENS_ART.src = "assets/places/frawens/salon.png?v=74";
@@ -192,7 +192,7 @@ const MORENO_ART = new Image();
 MORENO_ART.src = "assets/places/moreno/plaza.png?v=67";
 
 const MORENO_COLLISION = new Image();
-MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=67";
+MORENO_COLLISION.src = "assets/places/moreno/collision-game.png?v=72";
 /** @type {Uint8ClampedArray | null} */
 let morenoCollisionPixels = null;
 MORENO_COLLISION.addEventListener("load", () => {
@@ -1064,9 +1064,51 @@ function drawTilosLights(map) {
   ctx.restore();
 }
 
+function morenoExitPoint() {
+  const exits = MAPS.moreno.exits;
+  let x = 0;
+  let y = 0;
+  for (const exit of exits) {
+    const point = tileCenter(exit);
+    x += point.x;
+    y += point.y;
+  }
+  return { x: x / exits.length, y: y / exits.length };
+}
+
+function nearMorenoExit() {
+  if (state.map.id !== "moreno" || state.dialogue || !state.map.exits.length) {
+    return false;
+  }
+  const point = morenoExitPoint();
+  return Math.hypot(player.x - point.x, player.y - point.y) < 72;
+}
+
+function drawSecretExit() {
+  const point = morenoExitPoint();
+  const x = point.x;
+  const y = point.y;
+  ctx.fillStyle = "#1a120e";
+  ctx.fillRect(x - 11, y - 11, 22, 22);
+  ctx.fillStyle = "#e6c36a";
+  ctx.fillRect(x - 8, y - 8, 16, 16);
+  ctx.fillStyle = "#1a120e";
+  ctx.fillRect(x - 5, y - 4, 10, 8);
+  ctx.fillStyle = "#e6c36a";
+  ctx.fillRect(x - 3, y - 2, 6, 4);
+  ctx.fillStyle = "#1a120e";
+  ctx.fillRect(x - 6, y + 5, 12, 2);
+}
+
 function drawDoors(map) {
-  if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
-    if (map.id === "frawens" || map.id === "universal" || map.id === "moreno") {
+  if (map.id === "moreno") {
+    if (map.exits.length) {
+      drawSecretExit();
+    }
+    return;
+  }
+  if (map.id === "pasillo" || map.id === "frawens" || map.id === "universal") {
+    if (map.id === "frawens" || map.id === "universal") {
       for (const exit of map.exits) {
         ctx.fillStyle = "rgba(230, 195, 106, 0.55)";
         ctx.fillRect(exit.tx * TILE + 3, exit.ty * TILE + 3, 10, 10);
@@ -1323,7 +1365,15 @@ function drawHud() {
   ctx.fillStyle = "#f3e6c8";
   ctx.fillText(state.map.name, 6, 12);
   ctx.fillText(`${coinCount()}/3`, 210, 12);
-  if (!state.dialogue && (nearbyNpc() || atCounter())) {
+  if (nearMorenoExit()) {
+    ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
+    ctx.fillRect(36, 22, 184, 28);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f3e6c8";
+    ctx.fillText("Salir por los", VIEW_W / 2, 34);
+    ctx.fillText("túneles secretos", VIEW_W / 2, 46);
+    ctx.textAlign = "left";
+  } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillText("Hablar", 96, 28);
   }
 }
