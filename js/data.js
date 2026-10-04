@@ -419,6 +419,7 @@ const MAPS = {
         dir: "down",
         visible: true,
         portrait: "assets/jose-walk.png?v=1",
+        face: { x: 22, y: 0, w: 74, h: 72 },
         sheet: {
           cellW: 104,
           cellH: 214,
@@ -511,6 +512,7 @@ const MAPS = {
         dir: "down",
         visible: true,
         portrait: "assets/nachito-walk.png?v=59",
+        face: { x: 38, y: 24, w: 60, h: 84 },
         sheet: {
           cellW: 140,
           cellH: 205,
@@ -595,6 +597,7 @@ const MAPS = {
         dir: "down",
         visible: true,
         portrait: "assets/nahuel-walk.png?v=1",
+        face: { x: 32, y: 0, w: 62, h: 74 },
         sheet: {
           cellW: 141,
           cellH: 155,
@@ -722,6 +725,7 @@ const MAPS = {
         dir: "down",
         visible: true,
         portrait: "assets/chelo-walk.png?v=2",
+        face: { x: 28, y: 2, w: 108, h: 112 },
         sheet: {
           cellW: 180,
           cellH: 570,

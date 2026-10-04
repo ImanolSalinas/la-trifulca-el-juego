@@ -578,13 +578,14 @@ function takeCoin() {
   });
 }
 
-function openDialogue(lines, action, quiz) {
+function openDialogue(lines, action, quiz, speakerId) {
   state.dialogue = {
     lines,
     index: 0,
     action: action ?? null,
     quiz: quiz ?? null,
     choiceRects: null,
+    speakerId: speakerId ?? null,
   };
 }
 
@@ -648,8 +649,9 @@ function answerQuiz(optionIndex) {
     return;
   }
   const quiz = dialogue.quiz;
+  const speakerId = dialogue.speakerId;
   if (optionIndex === quiz.correct) {
-    openDialogue(quiz.win);
+    openDialogue(quiz.win, null, null, speakerId);
     if (quiz.gate) {
       state.gates[quiz.gate] = true;
       return;
@@ -660,7 +662,7 @@ function answerQuiz(optionIndex) {
     }
     return;
   }
-  openDialogue(quiz.lose);
+  openDialogue(quiz.lose, null, null, speakerId);
 }
 
 function openBoleteriaDialogue() {
@@ -671,13 +673,18 @@ function openBoleteriaDialogue() {
       count === 0 ? "Todavía no trajiste monedas." : `Llevás ${count} de ${COIN_TOTAL}.`;
     const faltaLine =
       falta === 1 ? "Te falta 1 moneda." : `Te faltan ${falta} monedas.`;
-    openDialogue([
-      "Boletería",
-      "Acá se cambian las monedas por la entrada.",
-      llevas,
-      faltaLine,
-      "Son 6 en total. Volvé cuando las tengas.",
-    ]);
+    openDialogue(
+      [
+        "Boletería",
+        "Acá se cambian las monedas por la entrada.",
+        llevas,
+        faltaLine,
+        "Son 6 en total. Volvé cuando las tengas.",
+      ],
+      null,
+      null,
+      "boleteria",
+    );
     return;
   }
   state.deposited = true;
@@ -694,6 +701,8 @@ function openBoleteriaDialogue() {
           "Las 6 monedas. Perfecto.",
         ],
     url ? "ticket" : null,
+    null,
+    "boleteria",
   );
 }
 
@@ -732,7 +741,7 @@ function checkJose() {
     return;
   }
   state.suppressJose = true;
-  openDialogue(jose.lines, "quiz", jose.quiz);
+  openDialogue(jose.lines, "quiz", jose.quiz, jose.id);
 }
 
 function talk() {
@@ -757,14 +766,14 @@ function talk() {
   if (npc) {
     if (npc.quiz) {
       if (npc.quiz.gate && state.gates[npc.quiz.gate]) {
-        openDialogue(npc.quiz.done || ["Pasá."]);
+        openDialogue(npc.quiz.done || ["Pasá."], null, null, npc.id);
       } else if (quizCoinPending(npc.quiz)) {
-        openDialogue(npc.quiz.done || ["Ya te di la moneda."]);
+        openDialogue(npc.quiz.done || ["Ya te di la moneda."], null, null, npc.id);
       } else {
-        openDialogue(npc.lines, "quiz", npc.quiz);
+        openDialogue(npc.lines, "quiz", npc.quiz, npc.id);
       }
     } else {
-      openDialogue([npc.name, ...npc.lines]);
+      openDialogue([npc.name, ...npc.lines], null, null, npc.id);
     }
     return;
   }
@@ -1699,30 +1708,125 @@ function wrapText(text, maxWidth) {
   return lines;
 }
 
+const boleteriaPortraits = ["assets/quique.png?v=1", "assets/perro.png?v=1"].map((src) => {
+  const image = new Image();
+  image.src = src;
+  return image;
+});
+
+function dialogueNpc() {
+  const id = state.dialogue?.speakerId;
+  if (!id || id === "boleteria") {
+    return null;
+  }
+  for (const map of Object.values(MAPS)) {
+    const npc = map.npcs.find((entry) => entry.id === id && entry.face);
+    if (npc) {
+      return npc;
+    }
+  }
+  return null;
+}
+
+function portraitSize(width, height, maxW, maxH) {
+  const scale = Math.min(maxH / height, maxW / width);
+  return {
+    w: Math.max(1, Math.round(width * scale)),
+    h: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+function dialoguePortraits() {
+  if (state.dialogue?.speakerId === "boleteria") {
+    return boleteriaPortraits
+      .filter((image) => image.complete && image.naturalWidth)
+      .map((image) => ({
+        image,
+        sx: 0,
+        sy: 0,
+        sw: image.naturalWidth,
+        sh: image.naturalHeight,
+      }));
+  }
+  const npc = dialogueNpc();
+  const image = npc ? npcPortraits[npc.id] : null;
+  if (!npc || !image?.complete || !image.naturalWidth) {
+    return [];
+  }
+  return [{
+    image,
+    sx: npc.face.x,
+    sy: npc.face.y,
+    sw: npc.face.w,
+    sh: npc.face.h,
+  }];
+}
+
 function drawDialogue() {
   if (!state.dialogue) {
     return null;
   }
+  const portraits = dialoguePortraits();
+  const many = portraits.length > 1;
+  const faceSizes = portraits.map((portrait) => portraitSize(
+    portrait.sw,
+    portrait.sh,
+    many ? 40 : 64,
+    many ? 44 : 52,
+  ));
+  const facesW = faceSizes.reduce((sum, size) => sum + size.w, 0) + Math.max(0, faceSizes.length - 1) * 2;
+  const facesH = faceSizes.reduce((max, size) => Math.max(max, size.h), 0);
   const last = state.dialogue.index >= state.dialogue.lines.length - 1;
   const showQuiz = Boolean(state.dialogue.quiz && last);
   const optionCount = showQuiz ? state.dialogue.quiz.options.length : 0;
-  const boxH = showQuiz ? 40 + optionCount * 24 + 10 : 66;
-  const boxY = showQuiz ? Math.max(48, VIEW_H - boxH - 8) : 150;
+  const showTicket = state.dialogue.action === "ticket" && last;
+  const textX = facesW ? 16 + facesW + 8 : 16;
+  const textW = 232 - textX;
+
+  ctx.font = '8px "Press Start 2P", monospace';
+  const lines = wrapText(state.dialogue.lines[state.dialogue.index], textW);
+  const textH = Math.max(12, lines.length * 12);
+  const bodyH = Math.max(facesH, textH);
+  const footer = showQuiz ? 8 + optionCount * 24 + 4 : !last || showTicket ? 26 : 8;
+  const boxH = 12 + bodyH + footer;
+  const boxY = Math.max(22, VIEW_H - boxH - 6);
 
   ctx.fillStyle = "#1a120e";
   ctx.fillRect(8, boxY, 240, boxH);
   ctx.strokeStyle = BRAND.cyan;
   ctx.strokeRect(8.5, boxY + 0.5, 239, boxH - 1);
+
+  const blockTop = boxY + 8;
+  if (faceSizes.length) {
+    let faceX = 14;
+    faceSizes.forEach((size, index) => {
+      const portrait = portraits[index];
+      const faceY = blockTop + Math.max(0, Math.round((bodyH - size.h) / 2));
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        portrait.image,
+        portrait.sx,
+        portrait.sy,
+        portrait.sw,
+        portrait.sh,
+        faceX,
+        faceY,
+        size.w,
+        size.h,
+      );
+      faceX += size.w + 2;
+    });
+  }
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
-  const lines = wrapText(state.dialogue.lines[state.dialogue.index], 220);
+  const textTop = blockTop + Math.max(0, Math.round((bodyH - textH) / 2)) + 8;
   lines.forEach((line, index) => {
-    ctx.fillText(line, 16, boxY + 18 + index * 12);
+    ctx.fillText(line, textX, textTop + index * 12);
   });
 
   if (showQuiz) {
     const options = state.dialogue.quiz.options;
-    const startY = boxY + 36;
+    const startY = blockTop + bodyH + 6;
     /** @type {{ kind: string, index: number, x: number, y: number, w: number, h: number }[]} */
     const rects = [];
     options.forEach((option, index) => {
@@ -1741,20 +1845,20 @@ function drawDialogue() {
   }
 
   state.dialogue.choiceRects = null;
-  const showTicket = state.dialogue.action === "ticket" && last;
+  const buttonY = boxY + boxH - 22;
   if (showTicket) {
     ctx.fillStyle = "#c9a227";
-    ctx.fillRect(16, 190, 150, 18);
+    ctx.fillRect(16, buttonY, 150, 18);
     ctx.fillStyle = "#1a120e";
-    ctx.fillText("Sacar entradas", 22, 203);
-    return { kind: "ticket", x: 16, y: 190, w: 150, h: 18 };
+    ctx.fillText("Sacar entradas", 22, buttonY + 13);
+    return { kind: "ticket", x: 16, y: buttonY, w: 150, h: 18 };
   }
   if (!last) {
     ctx.fillStyle = "#c9a227";
-    ctx.fillRect(150, 190, 90, 18);
+    ctx.fillRect(150, buttonY, 90, 18);
     ctx.fillStyle = "#1a120e";
-    ctx.fillText("Siguiente", 158, 203);
-    return { kind: "next", x: 150, y: 190, w: 90, h: 18 };
+    ctx.fillText("Siguiente", 158, buttonY + 13);
+    return { kind: "next", x: 150, y: buttonY, w: 90, h: 18 };
   }
   return null;
 }
