@@ -164,10 +164,10 @@ function frawensSolid(x, y) {
 }
 
 const UNIVERSAL_ART = new Image();
-UNIVERSAL_ART.src = "assets/places/universal/street.png?v=45";
+UNIVERSAL_ART.src = "assets/places/universal/street.png?v=46";
 
 const UNIVERSAL_COLLISION = new Image();
-UNIVERSAL_COLLISION.src = "assets/places/universal/collision-game.png?v=50";
+UNIVERSAL_COLLISION.src = "assets/places/universal/collision-game.png?v=52";
 /** @type {Uint8ClampedArray | null} */
 let universalCollisionPixels = null;
 UNIVERSAL_COLLISION.addEventListener("load", () => {
@@ -180,8 +180,8 @@ UNIVERSAL_COLLISION.addEventListener("load", () => {
 });
 
 function universalSolid(x, y) {
-  const mapW = 24 * TILE;
-  const mapH = 30 * TILE;
+  const mapW = state.map.rows[0].length * TILE;
+  const mapH = state.map.rows.length * TILE;
   if (x < 0 || y < 0 || x >= mapW || y >= mapH) {
     return true;
   }
