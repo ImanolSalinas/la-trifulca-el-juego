@@ -625,7 +625,7 @@ function openBoleteriaDialogue() {
       falta === 1 ? "Te falta 1 moneda." : `Te faltan ${falta} monedas.`;
     openDialogue([
       "Boletería",
-      "Acá se cambian las monedas por la entrada a Medusa.",
+      "Acá se cambian las monedas por la entrada.",
       llevas,
       faltaLine,
       "Son 6 en total. Volvé cuando las tengas.",
@@ -864,8 +864,65 @@ function drawVenueArt(image, fallback) {
   ctx.fillRect(0, 0, mapW, mapH);
 }
 
+function medusaRevealed() {
+  return coinCount() >= COIN_TOTAL;
+}
+
+/** Blurred stand-in for the Medusa bay, baked once from the hallway art. */
+let medusaCoverCanvas = null;
+
+function blurSlice(image, sx, sy, sw, sh, dw, dh) {
+  const tiny = document.createElement("canvas");
+  tiny.width = Math.max(2, Math.round(dw / 12));
+  tiny.height = Math.max(2, Math.round(dh / 12));
+  const tctx = tiny.getContext("2d");
+  tctx.imageSmoothingEnabled = true;
+  tctx.drawImage(image, sx, sy, sw, sh, 0, 0, tiny.width, tiny.height);
+  const board = document.createElement("canvas");
+  board.width = dw;
+  board.height = dh;
+  const bctx = board.getContext("2d");
+  bctx.imageSmoothingEnabled = true;
+  bctx.imageSmoothingQuality = "high";
+  bctx.drawImage(tiny, 0, 0, dw, dh);
+  return board;
+}
+
+function ensureMedusaCover() {
+  if (medusaCoverCanvas) {
+    return medusaCoverCanvas;
+  }
+  if (!PASILLO_ART.complete || !PASILLO_ART.naturalWidth) {
+    return null;
+  }
+  const mapW = state.map.rows[0].length * TILE;
+  const mapH = state.map.rows.length * TILE;
+  const x = 662;
+  const y = 0;
+  const w = mapW - x;
+  const h = 196;
+  const sx = PASILLO_ART.naturalWidth / mapW;
+  const sy = PASILLO_ART.naturalHeight / mapH;
+  const board = blurSlice(PASILLO_ART, x * sx, y * sy, w * sx, h * sy, w, h);
+  medusaCoverCanvas = { canvas: board, x, y };
+  return medusaCoverCanvas;
+}
+
 function drawPasillo() {
   drawVenueArt(PASILLO_ART, "#241810");
+  if (medusaRevealed()) {
+    return;
+  }
+  const cover = ensureMedusaCover();
+  if (!cover) {
+    return;
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(cover.canvas, cover.x, cover.y);
+  ctx.restore();
+  ctx.imageSmoothingEnabled = false;
 }
 
 function drawFrawens() {
