@@ -1,6 +1,6 @@
 const { TILE, CHARACTERS, MAPS } = window.GAME_DATA;
-const VIEW_W = 256;
-const VIEW_H = 224;
+let VIEW_W = 256;
+let VIEW_H = 224;
 const SPEED = 78;
 const audio = new Audio();
 let trackIndex = 0;
@@ -791,11 +791,48 @@ function openTicket() {
   window.open(url, "_blank", "noopener");
 }
 
+function phoneStage() {
+  return window.matchMedia("(max-width: 899px)").matches;
+}
+
+function layoutCanvas() {
+  if (!phoneStage() || state.screen !== "play") {
+    VIEW_W = 256;
+    VIEW_H = 224;
+    if (canvas.width !== 768 || canvas.height !== 672) {
+      canvas.width = 768;
+      canvas.height = 672;
+    }
+    canvas.style.width = "";
+    canvas.style.height = "";
+    return;
+  }
+  const stage = document.getElementById("stage");
+  const rect = stage.getBoundingClientRect();
+  const scale = 2;
+  const dpr = Math.max(1, Math.min(3, Math.round(window.devicePixelRatio || 1)));
+  const cssW = Math.max(scale * 160, Math.floor(rect.width / scale) * scale);
+  const cssH = Math.max(scale * 140, Math.floor(rect.height / scale) * scale);
+  VIEW_W = cssW / scale;
+  VIEW_H = cssH / scale;
+  const bufferW = VIEW_W * scale * dpr;
+  const bufferH = VIEW_H * scale * dpr;
+  if (canvas.width !== bufferW || canvas.height !== bufferH) {
+    canvas.width = bufferW;
+    canvas.height = bufferH;
+  }
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+}
+
 function camera() {
   const map = state.map;
   const width = map.rows[0].length * TILE;
   const height = map.rows.length * TILE;
-  const zoom = map.id === "moreno" ? 0.5 : map.id === "tilos" || map.id === "universal" ? 0.72 : 1;
+  let zoom = map.id === "moreno" ? 0.5 : map.id === "tilos" || map.id === "universal" ? 0.72 : 1;
+  if (phoneStage() && zoom < 1) {
+    zoom = Math.min(1, zoom + 0.28);
+  }
   const viewW = VIEW_W / zoom;
   const viewH = VIEW_H / zoom;
   const x = viewW >= width ? (width - viewW) / 2 : Math.max(0, Math.min(player.x - viewW / 2, width - viewW));
@@ -1660,7 +1697,9 @@ function drawLabels(map, cam) {
   }
 }
 
-const MEDUSA_EXIT = { x: 78, y: VIEW_H - 28, w: 100, h: 26 };
+function medusaExit() {
+  return { x: (VIEW_W - 100) / 2, y: VIEW_H - 28, w: 100, h: 26 };
+}
 
 function drawHud() {
   ctx.fillStyle = "#100c0a";
@@ -1668,7 +1707,7 @@ function drawHud() {
   ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = "#f3e6c8";
   ctx.fillText(state.map.name, 6, 12);
-  ctx.fillText(`${coinCount()}/${COIN_TOTAL}`, 202, 12);
+  ctx.fillText(`${coinCount()}/${COIN_TOTAL}`, VIEW_W - 54, 12);
   if (nearSecretExit()) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
     ctx.fillRect(36, 22, 184, 28);
@@ -1678,11 +1717,12 @@ function drawHud() {
     ctx.fillText("túneles secretos", VIEW_W / 2, 46);
     ctx.textAlign = "left";
   } else if (state.map.id === "medusa" && !state.dialogue) {
+    const exit = medusaExit();
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
-    ctx.fillRect(MEDUSA_EXIT.x, MEDUSA_EXIT.y, MEDUSA_EXIT.w, MEDUSA_EXIT.h);
+    ctx.fillRect(exit.x, exit.y, exit.w, exit.h);
     ctx.textAlign = "center";
     ctx.fillStyle = "#f3e6c8";
-    ctx.fillText("Salir", VIEW_W / 2, MEDUSA_EXIT.y + 18);
+    ctx.fillText("Salir", VIEW_W / 2, exit.y + 18);
     ctx.textAlign = "left";
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillText("Hablar", 96, 28);
@@ -1768,11 +1808,13 @@ function drawDialogue() {
   }
   const portraits = dialoguePortraits();
   const many = portraits.length > 1;
+  const faceMaxW = many ? Math.min(40, Math.max(28, Math.floor((VIEW_W - 110) / 2))) : Math.min(64, Math.floor(VIEW_W * 0.28));
+  const faceMaxH = many ? Math.min(44, faceMaxW) : 52;
   const faceSizes = portraits.map((portrait) => portraitSize(
     portrait.sw,
     portrait.sh,
-    many ? 40 : 64,
-    many ? 44 : 52,
+    faceMaxW,
+    faceMaxH,
   ));
   const facesW = faceSizes.reduce((sum, size) => sum + size.w, 0) + Math.max(0, faceSizes.length - 1) * 2;
   const facesH = faceSizes.reduce((max, size) => Math.max(max, size.h), 0);
@@ -1781,7 +1823,8 @@ function drawDialogue() {
   const optionCount = showQuiz ? state.dialogue.quiz.options.length : 0;
   const showTicket = state.dialogue.action === "ticket" && last;
   const textX = facesW ? 16 + facesW + 8 : 16;
-  const textW = 232 - textX;
+  const boxW = VIEW_W - 16;
+  const textW = boxW - (textX - 8) - 8;
 
   ctx.font = '8px "Press Start 2P", monospace';
   const lines = wrapText(state.dialogue.lines[state.dialogue.index], textW);
@@ -1792,9 +1835,9 @@ function drawDialogue() {
   const boxY = Math.max(22, VIEW_H - boxH - 6);
 
   ctx.fillStyle = "#1a120e";
-  ctx.fillRect(8, boxY, 240, boxH);
+  ctx.fillRect(8, boxY, boxW, boxH);
   ctx.strokeStyle = BRAND.cyan;
-  ctx.strokeRect(8.5, boxY + 0.5, 239, boxH - 1);
+  ctx.strokeRect(8.5, boxY + 0.5, boxW - 1, boxH - 1);
 
   const blockTop = boxY + 8;
   if (faceSizes.length) {
@@ -1831,14 +1874,15 @@ function drawDialogue() {
     const rects = [];
     options.forEach((option, index) => {
       const y = startY + index * 24;
+      const optionW = boxW - 16;
       ctx.fillStyle = BRAND.orange;
-      ctx.fillRect(16, y, 224, 20);
+      ctx.fillRect(16, y, optionW, 20);
       ctx.fillStyle = BRAND.black;
       ctx.font = '7px "Press Start 2P", monospace';
-      const label = wrapText(option, 210)[0];
+      const label = wrapText(option, optionW - 14)[0];
       ctx.fillText(label, 22, y + 13);
       ctx.font = '8px "Press Start 2P", monospace';
-      rects.push({ kind: "quiz", index, x: 16, y, w: 224, h: 20 });
+      rects.push({ kind: "quiz", index, x: 16, y, w: optionW, h: 20 });
     });
     state.dialogue.choiceRects = rects;
     return { kind: "quiz", rects };
@@ -1854,11 +1898,12 @@ function drawDialogue() {
     return { kind: "ticket", x: 16, y: buttonY, w: 150, h: 18 };
   }
   if (!last) {
+    const nextX = 8 + boxW - 98;
     ctx.fillStyle = "#c9a227";
-    ctx.fillRect(150, buttonY, 90, 18);
+    ctx.fillRect(nextX, buttonY, 90, 18);
     ctx.fillStyle = "#1a120e";
-    ctx.fillText("Siguiente", 158, buttonY + 13);
-    return { kind: "next", x: 150, y: buttonY, w: 90, h: 18 };
+    ctx.fillText("Siguiente", nextX + 8, buttonY + 13);
+    return { kind: "next", x: nextX, y: buttonY, w: 90, h: 18 };
   }
   return null;
 }
@@ -1944,7 +1989,8 @@ function drawSelect() {
 }
 
 function render() {
-  ctx.setTransform(3, 0, 0, 3, 0, 0);
+  layoutCanvas();
+  ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   if (state.screen === "title") {
@@ -1995,7 +2041,7 @@ function hit(rect, point) {
 
 function onCanvasPointer(event) {
   const point = pointerPos(event);
-  if (state.screen === "play" && state.map.id === "medusa" && hit(MEDUSA_EXIT, point)) {
+  if (state.screen === "play" && state.map.id === "medusa" && hit(medusaExit(), point)) {
     leaveMedusa();
     return;
   }
