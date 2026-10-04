@@ -1155,8 +1155,7 @@ function drawTilosLights(map) {
   ctx.restore();
 }
 
-function morenoExitPoint() {
-  const exits = MAPS.moreno.exits;
+function exitClusterPoint(exits) {
   let x = 0;
   let y = 0;
   for (const exit of exits) {
@@ -1167,18 +1166,19 @@ function morenoExitPoint() {
   return { x: x / exits.length, y: y / exits.length };
 }
 
-function nearMorenoExit() {
-  if (state.map.id !== "moreno" || state.dialogue || !state.map.exits.length) {
+function nearSecretExit() {
+  if (state.dialogue || !state.map.exits.length) {
     return false;
   }
-  const point = morenoExitPoint();
-  return Math.hypot(player.x - point.x, player.y - point.y) < 72;
+  if (state.map.id !== "moreno" && state.map.id !== "gatos") {
+    return false;
+  }
+  const point = exitClusterPoint(state.map.exits);
+  const reach = state.map.id === "moreno" ? 72 : 30;
+  return Math.hypot(player.x - point.x, player.y - point.y) < reach;
 }
 
-function drawSecretExit() {
-  const point = morenoExitPoint();
-  const x = point.x;
-  const y = point.y;
+function drawPit(x, y) {
   ctx.fillStyle = "#3a3228";
   ctx.beginPath();
   ctx.ellipse(x, y, 13, 10, 0, 0, Math.PI * 2);
@@ -1194,27 +1194,10 @@ function drawSecretExit() {
 }
 
 function drawDoors(map) {
-  if (map.id === "moreno") {
+  if (map.id === "moreno" || map.id === "gatos") {
     if (map.exits.length) {
-      drawSecretExit();
-    }
-    return;
-  }
-  if (map.id === "gatos") {
-    if (map.exits.length) {
-      let x = 0;
-      let y = 0;
-      for (const exit of map.exits) {
-        const point = tileCenter(exit);
-        x += point.x;
-        y += point.y;
-      }
-      x /= map.exits.length;
-      y /= map.exits.length;
-      ctx.fillStyle = "#1a120e";
-      ctx.fillRect(x - 7, y - 7, 14, 14);
-      ctx.fillStyle = "#e6c36a";
-      ctx.fillRect(x - 5, y - 5, 10, 10);
+      const point = exitClusterPoint(map.exits);
+      drawPit(point.x, point.y);
     }
     return;
   }
@@ -1479,7 +1462,7 @@ function drawHud() {
   ctx.fillStyle = "#f3e6c8";
   ctx.fillText(state.map.name, 6, 12);
   ctx.fillText(`${coinCount()}/${COIN_TOTAL}`, 202, 12);
-  if (nearMorenoExit()) {
+  if (nearSecretExit()) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
     ctx.fillRect(36, 22, 184, 28);
     ctx.textAlign = "center";
