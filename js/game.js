@@ -995,6 +995,23 @@ function syncMedusaPlayback() {
   }
 }
 
+function leaveMedusa() {
+  if (state.map.id !== "medusa") {
+    return;
+  }
+  state.map = MAPS.pasillo;
+  placePlayer(state.returnSpawn);
+}
+
+function syncTalkButton() {
+  const leaving = state.screen === "play" && state.map.id === "medusa";
+  const label = leaving ? "Salir" : "Hablar";
+  if (talkButton.textContent !== label) {
+    talkButton.textContent = label;
+    talkButton.setAttribute("aria-label", label);
+  }
+}
+
 function checkMedusaExit() {
   if (state.map.id !== "medusa" || state.dialogue) {
     return;
@@ -1002,8 +1019,7 @@ function checkMedusaExit() {
   if (!keys.has("down")) {
     return;
   }
-  state.map = MAPS.pasillo;
-  placePlayer(state.returnSpawn);
+  leaveMedusa();
 }
 
 function drawMedusaCard() {
@@ -1635,6 +1651,8 @@ function drawLabels(map, cam) {
   }
 }
 
+const MEDUSA_EXIT = { x: 78, y: VIEW_H - 28, w: 100, h: 26 };
+
 function drawHud() {
   ctx.fillStyle = "#100c0a";
   ctx.fillRect(0, 0, VIEW_W, 18);
@@ -1652,10 +1670,10 @@ function drawHud() {
     ctx.textAlign = "left";
   } else if (state.map.id === "medusa" && !state.dialogue) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
-    ctx.fillRect(88, VIEW_H - 22, 80, 16);
+    ctx.fillRect(MEDUSA_EXIT.x, MEDUSA_EXIT.y, MEDUSA_EXIT.w, MEDUSA_EXIT.h);
     ctx.textAlign = "center";
     ctx.fillStyle = "#f3e6c8";
-    ctx.fillText("Salir", VIEW_W / 2, VIEW_H - 10);
+    ctx.fillText("Salir", VIEW_W / 2, MEDUSA_EXIT.y + 18);
     ctx.textAlign = "left";
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillText("Hablar", 96, 28);
@@ -1873,6 +1891,10 @@ function hit(rect, point) {
 
 function onCanvasPointer(event) {
   const point = pointerPos(event);
+  if (state.screen === "play" && state.map.id === "medusa" && hit(MEDUSA_EXIT, point)) {
+    leaveMedusa();
+    return;
+  }
   if (state.screen === "title") {
     if (hit(TITLE_PLAY, point)) {
       startMusic();
@@ -1954,6 +1976,10 @@ talkButton.addEventListener("pointerdown", (event) => {
   if (state.screen === "title") {
     startMusic();
   }
+  if (state.map.id === "medusa") {
+    leaveMedusa();
+    return;
+  }
   talkQueued = true;
 });
 talkButton.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -2026,6 +2052,7 @@ function frame(now) {
     checkMedusaExit();
   }
   syncMedusaPlayback();
+  syncTalkButton();
   render();
   requestAnimationFrame(frame);
 }

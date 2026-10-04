@@ -27,7 +27,10 @@ body {
 
 #stage {
   position: relative;
-  width: min(100%, calc((100dvh - 160px) * 256 / 224));
+  width: min(100%, calc((100dvh - 210px) * 256 / 224));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 #game {
@@ -39,9 +42,8 @@ body {
 }
 
 #mute {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  position: static;
+  margin-top: 8px;
   z-index: 2;
   font-family: "Press Start 2P", monospace;
   font-size: 8px;
@@ -163,13 +165,21 @@ body {
   color: #000000;
 }
 
-@media (pointer: fine) {
+@media (pointer: fine) and (min-width: 900px) {
   #app {
     gap: 0;
   }
 
   #stage {
     width: min(92vw, calc(92dvh * 256 / 224));
+    display: block;
+  }
+
+  #mute {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    margin-top: 0;
   }
 
   #touch {
