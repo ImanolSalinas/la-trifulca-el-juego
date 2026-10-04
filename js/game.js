@@ -17,7 +17,15 @@ function updateMuteButton() {
 function setMusicMuted(muted) {
   musicMuted = muted;
   audio.muted = muted;
+  medusaSong.muted = muted;
+  medusaVideo.muted = true;
   updateMuteButton();
+  if (state.map.id === "medusa") {
+    if (!muted && medusaSong.paused) {
+      medusaSong.play().catch(() => {});
+    }
+    return;
+  }
   if (!muted) {
     startMusic();
   }
@@ -124,6 +132,34 @@ PASILLO_ART.src = "assets/places/pasillo/pasillo.png?v=80";
 
 const PASILLO_VEILED = new Image();
 PASILLO_VEILED.src = "assets/places/pasillo/pasillo-velado.png?v=1";
+
+const medusaVideo = document.createElement("video");
+medusaVideo.src = "assets/places/medusa/interior.mp4?v=1";
+medusaVideo.loop = true;
+medusaVideo.playsInline = true;
+medusaVideo.preload = "auto";
+medusaVideo.muted = true;
+medusaVideo.setAttribute("playsinline", "");
+medusaVideo.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none";
+document.getElementById("stage").appendChild(medusaVideo);
+medusaVideo.addEventListener("ended", () => {
+  if (state.map.id !== "medusa") {
+    return;
+  }
+  medusaVideo.currentTime = 0;
+  medusaVideo.play().catch(() => {});
+});
+
+const MEDUSA_LOOP_MS = 60000;
+const MEDUSA_CARD_MS = 7000;
+const MEDUSA_SONG_CUE = 1;
+const medusaSong = new Audio("assets/places/medusa/aprovecha.mp3?v=1");
+medusaSong.preload = "auto";
+medusaSong.volume = 0.6;
+const MEDUSA_CARD = new Image();
+MEDUSA_CARD.src = "assets/places/medusa/gracias.png?v=1";
+let medusaVisitStart = 0;
+let medusaCycle = -1;
 
 const FRAWENS_ART = new Image();
 FRAWENS_ART.src = "assets/places/frawens/salon.png?v=81";
@@ -392,6 +428,9 @@ function solidAt(map, x, y) {
     return true;
   }
   const cell = map.rows[ty][tx];
+  if (map.id === "pasillo" && ty === 7 && tx >= 43 && tx <= 45 && !medusaRevealed()) {
+    return true;
+  }
   return cell === "#" || cell === "B" || cell === "T" || cell === "P" || cell === "S" || cell === "W" || cell === "C" || cell === "L" || cell === "K" || cell === "G";
 }
 
@@ -403,7 +442,7 @@ function canStand(map, x, y) {
 }
 
 function move(dt) {
-  if (state.screen !== "play" || state.dialogue) {
+  if (state.screen !== "play" || state.dialogue || state.map.id === "medusa") {
     player.moving = false;
     return;
   }
@@ -465,9 +504,15 @@ function checkTransitions() {
 
   const door = state.map.doors.find((item) => sameTile(item, here));
   if (door) {
+    if (door.to === "medusa" && !medusaRevealed()) {
+      return;
+    }
     state.returnSpawn = door.spawnBack;
     state.map = MAPS[door.to];
     placePlayer(door.spawnThere);
+    if (door.to === "medusa") {
+      cueMedusaSong(true);
+    }
     return;
   }
   if (onExit) {
@@ -647,7 +692,6 @@ function openBoleteriaDialogue() {
       : [
           "Boletería",
           "Las 6 monedas. Perfecto.",
-          "Listo. Falta cargar el link de Medusa.",
         ],
     url ? "ticket" : null,
   );
@@ -869,6 +913,135 @@ function drawVenueArt(image, fallback) {
 
 function medusaRevealed() {
   return coinCount() >= COIN_TOTAL;
+}
+
+function cueMedusaSong(restart) {
+  medusaVideo.muted = true;
+  medusaVideo.volume = 0;
+  medusaSong.muted = musicMuted;
+  if (restart) {
+    try {
+      medusaSong.currentTime = MEDUSA_SONG_CUE;
+    } catch (_) {
+      /* metadata may still be loading */
+    }
+  }
+  if (!musicMuted) {
+    medusaSong.play().catch(() => {});
+  }
+}
+
+function unlockMedusaSong() {
+  const here = playerTile();
+  const atDoor =
+    state.map.id === "pasillo" &&
+    medusaRevealed() &&
+    here.ty >= 7 &&
+    here.ty <= 9 &&
+    here.tx >= 43 &&
+    here.tx <= 45;
+  if (state.map.id !== "medusa" && !atDoor) {
+    return;
+  }
+  cueMedusaSong(false);
+}
+
+function medusaElapsed() {
+  if (!medusaVisitStart) {
+    return 0;
+  }
+  return (performance.now() - medusaVisitStart) % MEDUSA_LOOP_MS;
+}
+
+function syncMedusaPlayback() {
+  const inside = state.screen === "play" && state.map.id === "medusa";
+  medusaVideo.muted = true;
+  medusaVideo.volume = 0;
+  if (!inside) {
+    medusaVisitStart = 0;
+    medusaCycle = -1;
+    if (!medusaVideo.paused) {
+      medusaVideo.pause();
+    }
+    if (!medusaSong.paused) {
+      medusaSong.pause();
+    }
+    if (musicStarted && !musicMuted && audio.paused) {
+      audio.play().catch(() => {});
+    }
+    return;
+  }
+  if (!audio.paused) {
+    audio.pause();
+  }
+  if (!medusaVisitStart) {
+    medusaVisitStart = performance.now();
+    medusaCycle = 0;
+    cueMedusaSong(true);
+    if (medusaVideo.paused) {
+      medusaVideo.play().catch(() => {});
+    }
+    return;
+  }
+  const cycle = Math.floor((performance.now() - medusaVisitStart) / MEDUSA_LOOP_MS);
+  if (cycle !== medusaCycle) {
+    medusaCycle = cycle;
+    cueMedusaSong(true);
+  } else if (medusaSong.paused && !musicMuted) {
+    cueMedusaSong(false);
+  }
+  if (medusaVideo.paused) {
+    medusaVideo.play().catch(() => {});
+  }
+}
+
+function checkMedusaExit() {
+  if (state.map.id !== "medusa" || state.dialogue) {
+    return;
+  }
+  if (!keys.has("down")) {
+    return;
+  }
+  state.map = MAPS.pasillo;
+  placePlayer(state.returnSpawn);
+}
+
+function drawMedusaCard() {
+  if (!MEDUSA_CARD.complete || !MEDUSA_CARD.naturalWidth) {
+    return;
+  }
+  const iw = MEDUSA_CARD.naturalWidth;
+  const ih = MEDUSA_CARD.naturalHeight;
+  const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(MEDUSA_CARD, (VIEW_W - dw) / 2, (VIEW_H - dh) / 2, dw, dh);
+  ctx.restore();
+  ctx.imageSmoothingEnabled = false;
+}
+
+function drawMedusa() {
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const vw = medusaVideo.videoWidth;
+  const vh = medusaVideo.videoHeight;
+  if (vw && vh && medusaVideo.readyState >= 2) {
+    const scale = Math.max(VIEW_W / vw, VIEW_H / vh);
+    const dw = vw * scale;
+    const dh = vh * scale;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(medusaVideo, (VIEW_W - dw) / 2, (VIEW_H - dh) / 2, dw, dh);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+  }
+  if (medusaElapsed() >= MEDUSA_CARD_MS) {
+    drawMedusaCard();
+  }
 }
 
 function drawPasillo() {
@@ -1477,6 +1650,13 @@ function drawHud() {
     ctx.fillText("Salir por los", VIEW_W / 2, 34);
     ctx.fillText("túneles secretos", VIEW_W / 2, 46);
     ctx.textAlign = "left";
+  } else if (state.map.id === "medusa" && !state.dialogue) {
+    ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
+    ctx.fillRect(88, VIEW_H - 22, 80, 16);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f3e6c8";
+    ctx.fillText("Salir", VIEW_W / 2, VIEW_H - 10);
+    ctx.textAlign = "left";
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillText("Hablar", 96, 28);
   }
@@ -1653,6 +1833,11 @@ function render() {
     drawSelect();
     return null;
   }
+  if (state.map.id === "medusa") {
+    drawMedusa();
+    drawHud();
+    return null;
+  }
 
   const cam = camera();
   ctx.save();
@@ -1746,6 +1931,7 @@ function bindHold(button, key) {
       }
     }
     keys.add(key);
+    unlockMedusaSong();
   };
   const release = (event) => {
     event.preventDefault();
@@ -1795,6 +1981,7 @@ window.addEventListener("keydown", (event) => {
   if (key) {
     event.preventDefault();
     keys.add(key);
+    unlockMedusaSong();
     return;
   }
   if (event.key === "z" || event.key === "Z" || event.key === "Enter") {
@@ -1836,7 +2023,9 @@ function frame(now) {
     checkTransitions();
     checkBoleteria();
     checkJose();
+    checkMedusaExit();
   }
+  syncMedusaPlayback();
   render();
   requestAnimationFrame(frame);
 }
