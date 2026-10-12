@@ -92,9 +92,16 @@ const state = {
   gates: { frawens: false },
   returnSpawn: { tx: 8, ty: 20 },
   hover: -1,
+  chapter: 1,
   /** @type {{ id: string, mapId: string, tx: number, ty: number, x: number, y: number, toss: null | { fromX: number, fromY: number, toX: number, toY: number, t: number, dur: number } }[]} */
   worldCoins: [],
 };
+
+/** @type {readonly { id: number, name: string, blurb: string, locked: boolean }[]} */
+const CHAPTERS = [
+  { id: 1, name: "Capítulo 1", blurb: "Disponible", locked: false },
+  { id: 2, name: "Capítulo 2", blurb: "Próximamente", locked: true },
+];
 
 function tileCenter(tile) {
   return {
@@ -2196,6 +2203,76 @@ function characterRect(index) {
   return { x: 4 + col * 84, y: 16 + row * 69, w: 80, h: 66 };
 }
 
+function chapterRect(index) {
+  const gap = 12;
+  const w = 110;
+  const h = 140;
+  const total = CHAPTERS.length * w + (CHAPTERS.length - 1) * gap;
+  const x0 = Math.floor((VIEW_W - total) / 2);
+  return { x: x0 + index * (w + gap), y: 36, w, h };
+}
+
+function drawLockIcon(cx, cy) {
+  ctx.fillStyle = BRAND.cyanDeep;
+  ctx.fillRect(cx - 8, cy - 2, 16, 14);
+  ctx.fillStyle = BRAND.black;
+  ctx.fillRect(cx - 5, cy + 2, 10, 7);
+  ctx.strokeStyle = BRAND.cyanDeep;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 2, 6, Math.PI, 0, false);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+function drawChapters() {
+  ctx.fillStyle = BRAND.black;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.fillStyle = BRAND.cyan;
+  const title = "Elegí capítulo";
+  ctx.fillText(title, (VIEW_W - ctx.measureText(title).width) / 2, 18);
+
+  CHAPTERS.forEach((chapter, index) => {
+    const rect = chapterRect(index);
+    const hovered = state.hover === index;
+    ctx.fillStyle = chapter.locked ? "#0a0c0e" : "#101418";
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+    if (chapter.locked) {
+      ctx.strokeStyle = "#2a343c";
+    } else {
+      ctx.strokeStyle = hovered ? BRAND.orange : BRAND.cyanDeep;
+    }
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+
+    ctx.fillStyle = chapter.locked ? "#5a6570" : BRAND.cream;
+    const nameWidth = ctx.measureText(chapter.name).width;
+    ctx.fillText(chapter.name, rect.x + (rect.w - nameWidth) / 2, rect.y + 28);
+
+    if (chapter.locked) {
+      drawLockIcon(rect.x + rect.w / 2, rect.y + 64);
+      ctx.fillStyle = "#5a6570";
+      const lockLabel = "Bloqueado";
+      const lockWidth = ctx.measureText(lockLabel).width;
+      ctx.fillText(lockLabel, rect.x + (rect.w - lockWidth) / 2, rect.y + 96);
+      ctx.fillStyle = BRAND.cyanDeep;
+      const blurbWidth = ctx.measureText(chapter.blurb).width;
+      ctx.fillText(chapter.blurb, rect.x + (rect.w - blurbWidth) / 2, rect.y + 118);
+    } else {
+      ctx.fillStyle = BRAND.cyan;
+      ctx.font = '16px "Press Start 2P", monospace';
+      const num = String(chapter.id);
+      const numWidth = ctx.measureText(num).width;
+      ctx.fillText(num, rect.x + (rect.w - numWidth) / 2, rect.y + 72);
+      ctx.font = '8px "Press Start 2P", monospace';
+      ctx.fillStyle = BRAND.cyan;
+      const blurbWidth = ctx.measureText(chapter.blurb).width;
+      ctx.fillText(chapter.blurb, rect.x + (rect.w - blurbWidth) / 2, rect.y + 108);
+    }
+  });
+}
+
 function drawSelect() {
   ctx.fillStyle = BRAND.black;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -2246,6 +2323,10 @@ function render() {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   if (state.screen === "title") {
     drawTitle();
+    return null;
+  }
+  if (state.screen === "chapters") {
+    drawChapters();
     return null;
   }
   if (state.screen === "select") {
@@ -2299,8 +2380,20 @@ function onCanvasPointer(event) {
   if (state.screen === "title") {
     if (hit(TITLE_PLAY, point)) {
       startMusic();
-      state.screen = "select";
+      state.screen = "chapters";
+      state.hover = -1;
     }
+    return;
+  }
+  if (state.screen === "chapters") {
+    CHAPTERS.forEach((chapter, index) => {
+      if (!hit(chapterRect(index), point) || chapter.locked) {
+        return;
+      }
+      state.chapter = chapter.id;
+      state.hover = -1;
+      state.screen = "select";
+    });
     return;
   }
   if (state.screen === "select") {
@@ -2335,6 +2428,11 @@ function onCanvasPointer(event) {
 }
 
 function onCanvasMove(event) {
+  if (state.screen === "chapters") {
+    const point = pointerPos(event);
+    state.hover = CHAPTERS.findIndex((chapter, index) => !chapter.locked && hit(chapterRect(index), point));
+    return;
+  }
   if (state.screen !== "select") {
     state.hover = -1;
     return;
@@ -2496,7 +2594,15 @@ function frame(now) {
   if (talkQueued) {
     talkQueued = false;
     if (state.screen === "title") {
-      state.screen = "select";
+      state.screen = "chapters";
+      state.hover = -1;
+    } else if (state.screen === "chapters") {
+      const open = CHAPTERS.find((chapter) => !chapter.locked);
+      if (open) {
+        state.chapter = open.id;
+        state.hover = -1;
+        state.screen = "select";
+      }
     } else {
       talk();
     }
