@@ -4,7 +4,7 @@
 const TILE = 16;
 const WORLD_PX = 24;
 
-/** @type {readonly { id: string, name: string, role: string, portrait: string, sheet?: { cellW: number, cellH: number, idle: number, walk: readonly number[], foot: number, scale: number, dirs: Record<string, number> } }[]} */
+/** @type {readonly { id: string, name: string, role: string, portrait: string, sheet?: { cellW: number, cellH: number, idle: number, walk: readonly number[], foot: number, scale: number, dirs: Record<string, number>, mirrorLeft?: boolean, swapSides?: boolean } }[]} */
 const CHARACTERS = [
   {
     id: "ima",
@@ -19,6 +19,7 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 94,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      mirrorLeft: true,
     },
   },
   {
@@ -49,6 +50,7 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 159,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      mirrorLeft: true,
     },
   },
   {
@@ -64,6 +66,7 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 146,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      mirrorLeft: true,
     },
   },
   {
@@ -79,6 +82,7 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 150,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      mirrorLeft: true,
     },
   },
   {
@@ -94,13 +98,14 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 154,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      swapSides: true,
     },
   },
   {
     id: "nacho",
     name: "Nacho",
     role: "Timbales",
-    portrait: "assets/nacho-walk.png?v=27",
+    portrait: "assets/nacho-walk.png?v=28",
     sheet: {
       cellW: 104,
       cellH: 134,
@@ -109,13 +114,14 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 134,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      swapSides: true,
     },
   },
   {
     id: "jerry",
     name: "Jerry",
     role: "Güiro",
-    portrait: "assets/jerry-walk.png?v=27",
+    portrait: "assets/jerry-walk.png?v=28",
     sheet: {
       cellW: 104,
       cellH: 136,

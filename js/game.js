@@ -74,6 +74,8 @@ const player = {
   character: CHARACTERS[0],
   moving: false,
   walkTime: 0,
+  /** @type {null | { t: number, dur: number }} */
+  jump: null,
 };
 
 const state = {
@@ -441,8 +443,68 @@ function canStand(map, x, y) {
   return !solidAt(map, left, feet) && !solidAt(map, right, feet) && !solidAt(map, x, feet);
 }
 
+const FADE_OUT = 0.16;
+const FADE_IN = 0.24;
+
+const transition = {
+  active: false,
+  phase: "out",
+  t: 0,
+  /** @type {null | (() => void)} */
+  apply: null,
+};
+
+function beginPlaceFade(apply) {
+  if (transition.active) {
+    return;
+  }
+  transition.active = true;
+  transition.phase = "out";
+  transition.t = 0;
+  transition.apply = apply;
+}
+
+function updatePlaceFade(dt) {
+  if (!transition.active) {
+    return;
+  }
+  transition.t += dt;
+  const duration = transition.phase === "out" ? FADE_OUT : FADE_IN;
+  if (transition.t < duration) {
+    return;
+  }
+  if (transition.phase === "out") {
+    const apply = transition.apply;
+    transition.apply = null;
+    transition.phase = "in";
+    transition.t = 0;
+    if (apply) {
+      apply();
+    }
+    return;
+  }
+  transition.active = false;
+  transition.t = 0;
+}
+
+function drawPlaceFade() {
+  if (!transition.active) {
+    return;
+  }
+  const duration = transition.phase === "out" ? FADE_OUT : FADE_IN;
+  const k = Math.min(1, transition.t / duration);
+  const eased = k * k * (3 - 2 * k);
+  const alpha = transition.phase === "out" ? eased : 1 - eased;
+  if (alpha <= 0) {
+    return;
+  }
+  ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+}
+
 function move(dt) {
-  if (state.screen !== "play" || state.dialogue || state.map.id === "medusa") {
+  if (state.screen !== "play" || state.dialogue || state.map.id === "medusa" || transition.active) {
     player.moving = false;
     return;
   }
@@ -491,6 +553,9 @@ function sameTile(a, b) {
 }
 
 function checkTransitions() {
+  if (transition.active) {
+    return;
+  }
   const here = playerTile();
   const onDoor = state.map.doors.some((door) => sameTile(door, here));
   const onExit = state.map.exits.some((exit) => sameTile(exit, here));
@@ -507,17 +572,25 @@ function checkTransitions() {
     if (door.to === "medusa" && !medusaRevealed()) {
       return;
     }
-    state.returnSpawn = door.spawnBack;
-    state.map = MAPS[door.to];
-    placePlayer(door.spawnThere);
-    if (door.to === "medusa") {
-      cueMedusaSong(true);
-    }
+    const destination = door.to;
+    const spawnThere = door.spawnThere;
+    const spawnBack = door.spawnBack;
+    beginPlaceFade(() => {
+      state.returnSpawn = spawnBack;
+      state.map = MAPS[destination];
+      placePlayer(spawnThere);
+      if (destination === "medusa") {
+        cueMedusaSong(true);
+      }
+    });
     return;
   }
   if (onExit) {
-    state.map = MAPS.pasillo;
-    placePlayer(state.returnSpawn);
+    const spawnBack = state.returnSpawn;
+    beginPlaceFade(() => {
+      state.map = MAPS.pasillo;
+      placePlayer(spawnBack);
+    });
   }
 }
 
@@ -745,7 +818,7 @@ function checkJose() {
 }
 
 function talk() {
-  if (state.screen !== "play") {
+  if (state.screen !== "play" || transition.active) {
     return;
   }
   if (state.dialogue) {
@@ -1042,18 +1115,20 @@ function syncMedusaPlayback() {
 }
 
 function leaveMedusa() {
-  if (state.map.id !== "medusa") {
+  if (state.map.id !== "medusa" || transition.active) {
     return;
   }
-  state.map = MAPS.pasillo;
-  placePlayer(state.returnSpawn);
+  const spawnBack = state.returnSpawn;
+  beginPlaceFade(() => {
+    state.map = MAPS.pasillo;
+    placePlayer(spawnBack);
+  });
 }
 
 function syncTalkButton() {
   const leaving = state.screen === "play" && state.map.id === "medusa";
   const label = leaving ? "Salir" : "Hablar";
-  if (talkButton.textContent !== label) {
-    talkButton.textContent = label;
+  if (talkButton.getAttribute("aria-label") !== label) {
     talkButton.setAttribute("aria-label", label);
   }
 }
@@ -1551,6 +1626,50 @@ for (const character of CHARACTERS) {
   portraits[character.id] = image;
 }
 
+const jumpSheets = {};
+for (const character of CHARACTERS) {
+  const image = new Image();
+  image.src = `assets/${character.id}-jump.png?v=3`;
+  jumpSheets[character.id] = image;
+}
+
+function startJump() {
+  if (!player.character.sheet || player.jump) {
+    return;
+  }
+  if (state.screen !== "play" || state.dialogue || transition.active || state.map.id === "medusa") {
+    return;
+  }
+  player.jump = { t: 0, dur: 0.62 };
+}
+
+function updateJump(dt) {
+  if (!player.jump) {
+    return;
+  }
+  if (transition.active || state.dialogue || state.map.id === "medusa") {
+    player.jump = null;
+    return;
+  }
+  player.jump.t += dt;
+  if (player.jump.t >= player.jump.dur) {
+    player.jump = null;
+  }
+}
+
+function jumpVisual() {
+  const k = player.jump.t / player.jump.dur;
+  if (k < 0.16) {
+    return { frame: 0, lift: 0 };
+  }
+  if (k > 0.86) {
+    return { frame: 3, lift: 0 };
+  }
+  const u = (k - 0.16) / 0.7;
+  const lift = Math.sin(u * Math.PI) * 32;
+  return { frame: u > 0.32 && u < 0.68 ? 2 : 1, lift };
+}
+
 function drawPhoto(image, x, y, width, height, flip) {
   if (!image.complete || image.naturalWidth === 0) {
     return;
@@ -1576,15 +1695,38 @@ function walkFrame(character, moving, time) {
   return sheet.walk[Math.floor(time * 8) % sheet.walk.length];
 }
 
-function drawWalkSheet(image, character, feetX, feetY, dir, frame) {
+function facingCell(character, dir, frame, hopping) {
+  const sheet = character.sheet;
+  let row = sheet.dirs[dir] ?? 0;
+  let flip = false;
+  const posed = hopping || frame === sheet.idle;
+  if (posed && sheet.swapSides && (dir === "left" || dir === "right")) {
+    row = sheet.dirs[dir === "left" ? "right" : "left"];
+  }
+  if (posed && sheet.mirrorLeft && dir === "left") {
+    flip = true;
+  }
+  return { row, flip };
+}
+
+function drawWalkSheet(image, character, feetX, feetY, dir, frame, hopping) {
   if (!image.complete || image.naturalWidth === 0) {
     return;
   }
-  const { cellW, cellH, foot, dirs, scale } = character.sheet;
-  const row = dirs[dir] ?? 0;
+  const { cellW, cellH, foot, scale } = character.sheet;
+  const { row, flip } = facingCell(character, dir, frame, hopping);
   const dw = cellW * scale;
   const dh = cellH * scale;
+  const destY = Math.round(feetY - dh + foot * scale);
   ctx.imageSmoothingEnabled = false;
+  if (flip) {
+    ctx.save();
+    ctx.translate(Math.round(feetX), 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(image, frame * cellW, row * cellH, cellW, cellH, Math.round(-dw / 2), destY, dw, dh);
+    ctx.restore();
+    return;
+  }
   ctx.drawImage(
     image,
     frame * cellW,
@@ -1592,7 +1734,7 @@ function drawWalkSheet(image, character, feetX, feetY, dir, frame) {
     cellW,
     cellH,
     Math.round(feetX - dw / 2),
-    Math.round(feetY - dh + foot * scale),
+    destY,
     dw,
     dh,
   );
@@ -1611,19 +1753,22 @@ for (const map of Object.values(MAPS)) {
   }
 }
 
+const PLAY_CIRCLE = "#e23d4a";
+
+function drawPlayCircle(cx, cy, radius) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#0a0c0e";
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, radius * 0.36);
+  ctx.strokeStyle = PLAY_CIRCLE;
+  ctx.stroke();
+}
+
 function drawTalkMark(feetX, feetY, spriteH) {
   const x = Math.round(feetX);
-  const y = Math.round(feetY - spriteH - 10 + Math.sin(performance.now() / 220) * 2);
-  ctx.fillStyle = BRAND.cyan;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 10);
-  ctx.lineTo(x - 7, y);
-  ctx.lineTo(x + 7, y);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = BRAND.black;
-  ctx.font = '8px "Press Start 2P", monospace';
-  ctx.fillText("!", x - 3, y + 1);
+  const y = Math.round(feetY - spriteH - 8 + Math.sin(performance.now() / 220) * 2);
+  drawPlayCircle(x, y, 6);
 }
 
 function drawPeople(map) {
@@ -1655,14 +1800,26 @@ function drawPeople(map) {
   }
   const character = player.character;
   const photo = portraits[character.id];
+  const jumpSheet = jumpSheets[character.id];
+  const hopping = player.jump && jumpSheet && jumpSheet.complete && jumpSheet.naturalWidth;
   if (character.sheet) {
+    const pose = hopping ? jumpVisual() : null;
+    if (pose) {
+      const spread = Math.max(0.35, 1 - pose.lift / 40);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.beginPath();
+      ctx.ellipse(player.x, player.y + 5, 4.5 * spread, 1.8 * spread, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const frame = pose ? pose.frame : walkFrame(character, player.moving, player.walkTime);
     drawWalkSheet(
-      photo,
+      hopping ? jumpSheet : photo,
       character,
       player.x,
-      player.y + 6,
+      player.y + 6 - (pose ? pose.lift : 0),
       player.dir,
-      walkFrame(character, player.moving, player.walkTime),
+      frame,
+      Boolean(pose),
     );
     return;
   }
@@ -1725,7 +1882,12 @@ function drawHud() {
     ctx.fillText("Salir", VIEW_W / 2, exit.y + 18);
     ctx.textAlign = "left";
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
-    ctx.fillText("Hablar", 96, 28);
+    ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
+    ctx.fillRect(86, 20, 88, 14);
+    drawPlayCircle(96, 27, 4.5);
+    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.fillStyle = "#f3e6c8";
+    ctx.fillText("Hablar", 106, 31);
   }
 }
 
@@ -1958,24 +2120,24 @@ function drawSelect() {
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     const photo = portraits[character.id];
     if (character.sheet && photo.complete && photo.naturalWidth) {
-      const { cellW, cellH, idle, dirs } = character.sheet;
+      const { cellW, cellH, idle } = character.sheet;
       const turnOrder = ["down", "right", "up", "left"];
       const dirName = turnOrder[Math.floor(performance.now() / 750) % turnOrder.length];
-      const row = dirs[dirName] ?? 0;
+      const { row, flip } = facingCell(character, dirName, idle, false);
       const dh = 36;
       const dw = cellW * (dh / cellH);
+      const destX = rect.x + (rect.w - dw) / 2;
+      const destY = rect.y + 2;
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(
-        photo,
-        idle * cellW,
-        row * cellH,
-        cellW,
-        cellH,
-        rect.x + (rect.w - dw) / 2,
-        rect.y + 2,
-        dw,
-        dh,
-      );
+      if (flip) {
+        ctx.save();
+        ctx.translate(Math.round(destX + dw / 2), 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(photo, idle * cellW, row * cellH, cellW, cellH, Math.round(-dw / 2), destY, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(photo, idle * cellW, row * cellH, cellW, cellH, destX, destY, dw, dh);
+      }
     }
     ctx.strokeStyle = state.hover === index ? BRAND.orange : BRAND.cyanDeep;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
@@ -2092,37 +2254,82 @@ function onCanvasMove(event) {
   state.hover = CHARACTERS.findIndex((_, index) => hit(characterRect(index), point));
 }
 
-function bindHold(button, key) {
-  const press = (event) => {
+function bindTap(button, action) {
+  button.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    if (button.setPointerCapture && event.pointerId != null) {
-      try {
-        button.setPointerCapture(event.pointerId);
-      } catch (_) {
-        /* ignore */
-      }
-    }
-    keys.add(key);
-    unlockMedusaSong();
-  };
-  const release = (event) => {
-    event.preventDefault();
-    keys.delete(key);
-  };
-  button.addEventListener("pointerdown", press);
-  button.addEventListener("pointerup", release);
-  button.addEventListener("pointerleave", release);
-  button.addEventListener("pointercancel", release);
+    action();
+  });
   button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
-document.querySelectorAll("[data-dir]").forEach((button) => {
-  bindHold(button, button.dataset.dir);
-});
+const stick = document.getElementById("stick");
+const stickKnob = document.getElementById("stick-knob");
+const stickDirs = new Set();
 
-const talkButton = document.getElementById("talk");
-talkButton.addEventListener("pointerdown", (event) => {
+function releaseStickDirs() {
+  for (const dir of stickDirs) {
+    keys.delete(dir);
+  }
+  stickDirs.clear();
+}
+
+function updateStick(event) {
+  const rect = stick.getBoundingClientRect();
+  const travel = rect.width * 0.32;
+  let dx = event.clientX - (rect.left + rect.width / 2);
+  let dy = event.clientY - (rect.top + rect.height / 2);
+  const dist = Math.hypot(dx, dy);
+  const scale = dist > travel ? travel / dist : 1;
+  stickKnob.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
+  releaseStickDirs();
+  if (dist < travel * 0.28) {
+    return;
+  }
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const gate = 0.42;
+  if (nx <= -gate) stickDirs.add("left");
+  if (nx >= gate) stickDirs.add("right");
+  if (ny <= -gate) stickDirs.add("up");
+  if (ny >= gate) stickDirs.add("down");
+  for (const dir of stickDirs) {
+    keys.add(dir);
+  }
+  unlockMedusaSong();
+}
+
+function endStick(event) {
+  if (stick.hasPointerCapture(event.pointerId)) {
+    stick.releasePointerCapture(event.pointerId);
+  }
+  stickKnob.style.transform = "translate(0px, 0px)";
+  releaseStickDirs();
+}
+
+stick.addEventListener("pointerdown", (event) => {
   event.preventDefault();
+  try {
+    stick.setPointerCapture(event.pointerId);
+  } catch (_) {
+    /* The pointer is already gone. */
+  }
+  updateStick(event);
+});
+stick.addEventListener("pointermove", (event) => {
+  if (!stick.hasPointerCapture(event.pointerId)) {
+    return;
+  }
+  updateStick(event);
+});
+stick.addEventListener("pointerup", endStick);
+stick.addEventListener("pointercancel", endStick);
+stick.addEventListener("contextmenu", (event) => event.preventDefault());
+
+bindTap(document.getElementById("jump"), startJump);
+bindTap(document.getElementById("attack"), () => {});
+bindTap(document.getElementById("special"), () => {});
+const talkButton = document.getElementById("talk");
+bindTap(talkButton, () => {
   if (state.screen === "title") {
     startMusic();
   }
@@ -2132,7 +2339,6 @@ talkButton.addEventListener("pointerdown", (event) => {
   }
   talkQueued = true;
 });
-talkButton.addEventListener("contextmenu", (event) => event.preventDefault());
 document.getElementById("touch").addEventListener("selectstart", (event) => {
   event.preventDefault();
 });
@@ -2158,6 +2364,13 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     keys.add(key);
     unlockMedusaSong();
+    return;
+  }
+  if (event.code === "Space") {
+    event.preventDefault();
+    if (!event.repeat) {
+      startJump();
+    }
     return;
   }
   if (event.key === "z" || event.key === "Z" || event.key === "Enter") {
@@ -2193,17 +2406,22 @@ function frame(now) {
     }
   }
   move(dt);
-  if (state.screen === "play") {
+  updateJump(dt);
+  updatePlaceFade(dt);
+  if (state.screen === "play" && !transition.active) {
     updateWorldCoin(dt);
     takeCoin();
     checkTransitions();
     checkBoleteria();
     checkJose();
     checkMedusaExit();
+  } else if (state.screen === "play") {
+    updateWorldCoin(dt);
   }
   syncMedusaPlayback();
   syncTalkButton();
   render();
+  drawPlaceFade();
   requestAnimationFrame(frame);
 }
 

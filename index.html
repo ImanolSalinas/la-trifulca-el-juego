@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/game.css?v=78" />
+    <link rel="stylesheet" href="css/game.css?v=81" />
   </head>
   <body>
     <div id="app">
@@ -16,17 +16,27 @@
         <button type="button" id="mute" aria-pressed="false" aria-label="Silenciar música">Sonido</button>
       </div>
       <div id="touch">
-        <div class="pad">
-          <button type="button" data-dir="up" aria-label="Arriba"></button>
-          <button type="button" data-dir="left" aria-label="Izquierda"></button>
-          <button type="button" data-dir="down" aria-label="Abajo"></button>
-          <button type="button" data-dir="right" aria-label="Derecha"></button>
+        <div id="stick" aria-label="Mover">
+          <div id="stick-knob"></div>
         </div>
-        <button type="button" id="talk">Hablar</button>
+        <div class="face">
+          <button type="button" id="special" aria-label="Especial">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,4.5 20.5,19.5 3.5,19.5" /></svg>
+          </button>
+          <button type="button" id="attack" aria-label="Pegar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="1.2" /></svg>
+          </button>
+          <button type="button" id="talk" aria-label="Hablar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.2" /></svg>
+          </button>
+          <button type="button" id="jump" aria-label="Saltar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" /></svg>
+          </button>
+        </div>
       </div>
     </div>
     <script src="js/config.js?v=73"></script>
-    <script src="js/data.js?v=109"></script>
-    <script src="js/game.js?v=186"></script>
+<script src="js/data.js?v=111"></script>
+<script src="js/game.js?v=202"></script>
   </body>
 </html>
