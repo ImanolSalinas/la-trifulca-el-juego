@@ -76,6 +76,8 @@ const player = {
   walkTime: 0,
   /** @type {null | { t: number, dur: number }} */
   jump: null,
+  /** @type {null | { t: number, dur: number }} */
+  attack: null,
 };
 
 const state = {
@@ -518,6 +520,10 @@ function move(dt) {
   if (dx === 0 && dy === 0) {
     player.moving = false;
     return;
+  }
+
+  if (player.attack) {
+    player.attack = null;
   }
 
   player.moving = true;
@@ -1633,8 +1639,18 @@ for (const character of CHARACTERS) {
   jumpSheets[character.id] = image;
 }
 
+const attackSheets = {};
+for (const character of CHARACTERS) {
+  if (!character.sheet?.attack) {
+    continue;
+  }
+  const image = new Image();
+  image.src = `assets/${character.id}-attack.png?v=12`;
+  attackSheets[character.id] = image;
+}
+
 function startJump() {
-  if (!player.character.sheet || player.jump) {
+  if (!player.character.sheet || player.jump || player.attack) {
     return;
   }
   if (state.screen !== "play" || state.dialogue || transition.active || state.map.id === "medusa") {
@@ -1643,11 +1659,26 @@ function startJump() {
   player.jump = { t: 0, dur: 0.62 };
 }
 
+function startAttack() {
+  const attack = player.character.sheet?.attack;
+  const sheet = attackSheets[player.character.id];
+  if (!attack || !sheet || player.attack) {
+    return;
+  }
+  if (state.screen !== "play" || state.dialogue || transition.active || state.map.id === "medusa") {
+    return;
+  }
+  player.jump = null;
+  player.moving = false;
+  player.attack = { t: 0, dur: attack.dur };
+  // Future: resolveStrike() at the peak frame will clear inspectors.
+}
+
 function updateJump(dt) {
   if (!player.jump) {
     return;
   }
-  if (transition.active || state.dialogue || state.map.id === "medusa") {
+  if (transition.active || state.dialogue || state.map.id === "medusa" || player.attack) {
     player.jump = null;
     return;
   }
@@ -1655,6 +1686,57 @@ function updateJump(dt) {
   if (player.jump.t >= player.jump.dur) {
     player.jump = null;
   }
+}
+
+function updateAttack(dt) {
+  if (!player.attack) {
+    return;
+  }
+  if (transition.active || state.dialogue || state.map.id === "medusa") {
+    player.attack = null;
+    return;
+  }
+  player.attack.t += dt;
+}
+
+function attackFrame() {
+  const attack = player.character.sheet.attack;
+  const loop = Math.max(0.05, attack.dur);
+  const k = (player.attack.t % loop) / loop;
+  return Math.floor(k * attack.frames) % attack.frames;
+}
+
+function drawAttackSheet(image, character, feetX, feetY, dir, frame) {
+  if (!image.complete || image.naturalWidth === 0) {
+    return;
+  }
+  const attack = character.sheet.attack;
+  const { cellW, cellH, foot, scale } = attack;
+  const row = attack.dirs ? attack.dirs[dir] ?? 0 : 0;
+  const flip = Boolean(attack.mirrorLeft && dir === "left");
+  const dw = cellW * scale;
+  const dh = cellH * scale;
+  const destY = Math.round(feetY - dh + foot * scale);
+  ctx.imageSmoothingEnabled = false;
+  if (flip) {
+    ctx.save();
+    ctx.translate(Math.round(feetX), 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(image, frame * cellW, row * cellH, cellW, cellH, Math.round(-dw / 2), destY, dw, dh);
+    ctx.restore();
+    return;
+  }
+  ctx.drawImage(
+    image,
+    frame * cellW,
+    row * cellH,
+    cellW,
+    cellH,
+    Math.round(feetX - dw / 2),
+    destY,
+    dw,
+    dh,
+  );
 }
 
 function jumpVisual() {
@@ -1801,8 +1883,15 @@ function drawPeople(map) {
   const character = player.character;
   const photo = portraits[character.id];
   const jumpSheet = jumpSheets[character.id];
-  const hopping = player.jump && jumpSheet && jumpSheet.complete && jumpSheet.naturalWidth;
+  const attackSheet = attackSheets[character.id];
+  const attacking =
+    player.attack && attackSheet && attackSheet.complete && attackSheet.naturalWidth && character.sheet?.attack;
+  const hopping = !attacking && player.jump && jumpSheet && jumpSheet.complete && jumpSheet.naturalWidth;
   if (character.sheet) {
+    if (attacking) {
+      drawAttackSheet(attackSheet, character, player.x, player.y + 6, player.dir, attackFrame());
+      return;
+    }
     const pose = hopping ? jumpVisual() : null;
     if (pose) {
       const spread = Math.max(0.35, 1 - pose.lift / 40);
@@ -2326,7 +2415,7 @@ stick.addEventListener("pointercancel", endStick);
 stick.addEventListener("contextmenu", (event) => event.preventDefault());
 
 bindTap(document.getElementById("jump"), startJump);
-bindTap(document.getElementById("attack"), () => {});
+bindTap(document.getElementById("attack"), startAttack);
 bindTap(document.getElementById("special"), () => {});
 const talkButton = document.getElementById("talk");
 bindTap(talkButton, () => {
@@ -2373,6 +2462,13 @@ window.addEventListener("keydown", (event) => {
     }
     return;
   }
+  if (event.key === "j" || event.key === "J") {
+    event.preventDefault();
+    if (!event.repeat) {
+      startAttack();
+    }
+    return;
+  }
   if (event.key === "z" || event.key === "Z" || event.key === "Enter") {
     event.preventDefault();
     if (state.screen === "title") {
@@ -2407,6 +2503,7 @@ function frame(now) {
   }
   move(dt);
   updateJump(dt);
+  updateAttack(dt);
   updatePlaceFade(dt);
   if (state.screen === "play" && !transition.active) {
     updateWorldCoin(dt);

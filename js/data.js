@@ -4,7 +4,7 @@
 const TILE = 16;
 const WORLD_PX = 24;
 
-/** @type {readonly { id: string, name: string, role: string, portrait: string, sheet?: { cellW: number, cellH: number, idle: number, walk: readonly number[], foot: number, scale: number, dirs: Record<string, number>, mirrorLeft?: boolean, swapSides?: boolean } }[]} */
+/** @type {readonly { id: string, name: string, role: string, portrait: string, sheet?: { cellW: number, cellH: number, idle: number, walk: readonly number[], foot: number, scale: number, dirs: Record<string, number>, mirrorLeft?: boolean, swapSides?: boolean, attack?: { cellW: number, cellH: number, foot: number, scale: number, frames: number, dur: number, dirs?: Record<string, number>, mirrorLeft?: boolean } } }[]} */
 const CHARACTERS = [
   {
     id: "ima",
@@ -20,6 +20,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 94,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       mirrorLeft: true,
+      /** Square-button singing special (from ima_cantando_alta_calidad.gif). */
+      attack: {
+        cellW: 328,
+        cellH: 402,
+        foot: 2,
+        scale: WORLD_PX / 402,
+        frames: 10,
+        dur: 1.3,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -35,6 +45,16 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 80,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      /** Square-button guitar special (from tobi_guitarra_sin_mancha.gif). */
+      attack: {
+        cellW: 372,
+        cellH: 462,
+        foot: 2,
+        scale: WORLD_PX / 462,
+        frames: 8,
+        dur: 1.36,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -51,6 +71,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 159,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       mirrorLeft: true,
+      /** Square-button keyboard special (from el_negro_teclado_suave_sin_halo.gif). */
+      attack: {
+        cellW: 304,
+        cellH: 447,
+        foot: 2,
+        scale: WORLD_PX / 447,
+        frames: 18,
+        dur: 3.06,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -67,6 +97,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 146,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       mirrorLeft: true,
+      /** Square-button sax special (from alvin_saxo_animado_calidad.gif). */
+      attack: {
+        cellW: 230,
+        cellH: 438,
+        foot: 2,
+        scale: WORLD_PX / 438,
+        frames: 18,
+        dur: 2.34,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -83,6 +123,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 150,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       mirrorLeft: true,
+      /** Square-button octapad special (from ger_octapad_animado.gif). */
+      attack: {
+        cellW: 361,
+        cellH: 434,
+        foot: 2,
+        scale: WORLD_PX / 434,
+        frames: 8,
+        dur: 1.36,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -99,6 +149,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 154,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       swapSides: true,
+      /** Square-button bass special (from colito_bajo_sin_mancha.gif). */
+      attack: {
+        cellW: 370,
+        cellH: 469,
+        foot: 2,
+        scale: WORLD_PX / 469,
+        frames: 8,
+        dur: 1.2,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -115,6 +175,16 @@ const CHARACTERS = [
       scale: WORLD_PX / 134,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
       swapSides: true,
+      /** Square-button timbales special (from nacho_timbales_sin_palillo_izquierdo.gif). */
+      attack: {
+        cellW: 278,
+        cellH: 464,
+        foot: 2,
+        scale: WORLD_PX / 464,
+        frames: 8,
+        dur: 1.36,
+        mirrorLeft: true,
+      },
     },
   },
   {
@@ -130,6 +200,16 @@ const CHARACTERS = [
       foot: 2,
       scale: WORLD_PX / 136,
       dirs: { down: 0, right: 1, up: 2, left: 3 },
+      /** Square-button güiro special (from jerry_guiro_nuevo.gif). */
+      attack: {
+        cellW: 238,
+        cellH: 413,
+        foot: 2,
+        scale: WORLD_PX / 413,
+        frames: 10,
+        dur: 0.9,
+        mirrorLeft: true,
+      },
     },
   },
 ];
