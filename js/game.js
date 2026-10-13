@@ -132,11 +132,21 @@ const BRAND = {
   cream: "#f4efe6",
 };
 
-const TITLE_ART = new Image();
-TITLE_ART.src = "assets/brand/title.jpg?v=51";
+const titleSplash = document.getElementById("title-splash");
 
-/** Hit zone for the baked-in JUGAR button on the title splash. */
-const TITLE_PLAY = { x: 80, y: 160, w: 96, h: 36 };
+function leaveTitle() {
+  if (state.screen !== "title") {
+    return;
+  }
+  startMusic();
+  state.screen = "chapters";
+  state.hover = -1;
+  document.body.classList.remove("title-mode");
+}
+
+function syncTitleMode() {
+  document.body.classList.toggle("title-mode", state.screen === "title");
+}
 
 const PASILLO_ART = new Image();
 PASILLO_ART.src = "assets/places/pasillo/pasillo.png?v=80";
@@ -2188,18 +2198,8 @@ function drawCoverImage(image) {
 }
 
 function drawTitle() {
-  const now = performance.now();
   ctx.fillStyle = BRAND.black;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  if (TITLE_ART.complete && TITLE_ART.naturalWidth) {
-    drawCoverImage(TITLE_ART);
-  }
-
-  // Soft pulse over the baked JUGAR so the CTA stays alive
-  const pulse = 0.12 + Math.sin(now / 380) * 0.08;
-  ctx.fillStyle = `rgba(69, 177, 209, ${pulse})`;
-  ctx.fillRect(TITLE_PLAY.x, TITLE_PLAY.y, TITLE_PLAY.w, TITLE_PLAY.h);
 }
 
 function characterRect(index) {
@@ -2383,11 +2383,7 @@ function onCanvasPointer(event) {
     return;
   }
   if (state.screen === "title") {
-    if (hit(TITLE_PLAY, point)) {
-      startMusic();
-      state.screen = "chapters";
-      state.hover = -1;
-    }
+    leaveTitle();
     return;
   }
   if (state.screen === "chapters") {
@@ -2523,7 +2519,8 @@ bindTap(document.getElementById("special"), () => {});
 const talkButton = document.getElementById("talk");
 bindTap(talkButton, () => {
   if (state.screen === "title") {
-    startMusic();
+    leaveTitle();
+    return;
   }
   if (state.map.id === "medusa") {
     leaveMedusa();
@@ -2531,6 +2528,13 @@ bindTap(talkButton, () => {
   }
   talkQueued = true;
 });
+
+if (titleSplash) {
+  titleSplash.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    leaveTitle();
+  });
+}
 document.getElementById("touch").addEventListener("selectstart", (event) => {
   event.preventDefault();
 });
@@ -2575,7 +2579,8 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "z" || event.key === "Z" || event.key === "Enter") {
     event.preventDefault();
     if (state.screen === "title") {
-      startMusic();
+      leaveTitle();
+      return;
     }
     talkQueued = true;
   }
@@ -2599,8 +2604,7 @@ function frame(now) {
   if (talkQueued) {
     talkQueued = false;
     if (state.screen === "title") {
-      state.screen = "chapters";
-      state.hover = -1;
+      leaveTitle();
     } else if (state.screen === "chapters") {
       const open = CHAPTERS.find((chapter) => !chapter.locked);
       if (open) {
@@ -2612,6 +2616,7 @@ function frame(now) {
       talk();
     }
   }
+  syncTitleMode();
   move(dt);
   updateJump(dt);
   updateAttack(dt);

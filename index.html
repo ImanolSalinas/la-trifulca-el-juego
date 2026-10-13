@@ -7,9 +7,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="css/game.css?v=81" />
+    <link rel="stylesheet" href="css/game.css?v=83" />
   </head>
-  <body>
+  <body class="title-mode">
+    <button type="button" id="title-splash" aria-label="Empezar a jugar">
+      <img
+        src="assets/places/medusa/la_trifulca_palancas_en_movimiento.gif?v=1"
+        alt="La Trifulca"
+        draggable="false"
+      />
+    </button>
     <div id="app">
       <div id="stage">
         <canvas id="game" width="768" height="672"></canvas>
@@ -37,6 +44,6 @@
     </div>
     <script src="js/config.js?v=73"></script>
 <script src="js/data.js?v=130"></script>
-<script src="js/game.js?v=217"></script>
+<script src="js/game.js?v=219"></script>
   </body>
 </html>
