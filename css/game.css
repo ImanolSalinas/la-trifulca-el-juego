@@ -51,7 +51,8 @@ body.title-mode #mute {
   pointer-events: auto;
 }
 
-#title-splash img {
+#title-splash img,
+#legal-splash img {
   display: block;
   width: 100%;
   height: 100%;
@@ -60,6 +61,44 @@ body.title-mode #mute {
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+#legal-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #000000;
+  display: none;
+  pointer-events: none;
+}
+
+body.legal-mode #legal-splash {
+  display: block;
+}
+
+body.legal-mode #title-splash {
+  display: none;
+}
+
+body.legal-mode #touch {
+  display: none;
+}
+
+body.legal-mode #app {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.legal-mode #mute {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top));
+  left: calc(8px + env(safe-area-inset-left));
+  z-index: 50;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 #app {

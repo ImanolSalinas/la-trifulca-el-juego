@@ -133,19 +133,53 @@ const BRAND = {
 };
 
 const titleSplash = document.getElementById("title-splash");
+const legalSplash = document.getElementById("legal-splash");
+const LEGAL_NOTICE_MS = 3000;
+let legalNoticeTimer = 0;
 
-function leaveTitle() {
-  if (state.screen !== "title") {
+function showLegalNotice() {
+  if (state.screen !== "title" || legalNoticeTimer) {
     return;
   }
   startMusic();
-  state.screen = "chapters";
+  state.screen = "legal";
   state.hover = -1;
   document.body.classList.remove("title-mode");
+  document.body.classList.add("legal-mode");
+  if (legalSplash) {
+    legalSplash.hidden = false;
+    legalSplash.setAttribute("aria-hidden", "false");
+  }
+  legalNoticeTimer = window.setTimeout(() => {
+    legalNoticeTimer = 0;
+    finishLegalNotice();
+  }, LEGAL_NOTICE_MS);
+}
+
+function finishLegalNotice() {
+  if (state.screen !== "legal") {
+    return;
+  }
+  if (legalNoticeTimer) {
+    window.clearTimeout(legalNoticeTimer);
+    legalNoticeTimer = 0;
+  }
+  state.screen = "chapters";
+  state.hover = -1;
+  document.body.classList.remove("legal-mode");
+  if (legalSplash) {
+    legalSplash.hidden = true;
+    legalSplash.setAttribute("aria-hidden", "true");
+  }
+}
+
+function leaveTitle() {
+  showLegalNotice();
 }
 
 function syncTitleMode() {
   document.body.classList.toggle("title-mode", state.screen === "title");
+  document.body.classList.toggle("legal-mode", state.screen === "legal");
 }
 
 const PASILLO_ART = new Image();
@@ -2325,8 +2359,10 @@ function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  if (state.screen === "title") {
-    drawTitle();
+  if (state.screen === "title" || state.screen === "legal") {
+    if (state.screen === "title") {
+      drawTitle();
+    }
     return null;
   }
   if (state.screen === "chapters") {
@@ -2383,6 +2419,9 @@ function onCanvasPointer(event) {
   }
   if (state.screen === "title") {
     leaveTitle();
+    return;
+  }
+  if (state.screen === "legal") {
     return;
   }
   if (state.screen === "chapters") {
@@ -2584,6 +2623,9 @@ window.addEventListener("keydown", (event) => {
       leaveTitle();
       return;
     }
+    if (state.screen === "legal") {
+      return;
+    }
     talkQueued = true;
   }
 });
@@ -2607,6 +2649,8 @@ function frame(now) {
     talkQueued = false;
     if (state.screen === "title") {
       leaveTitle();
+    } else if (state.screen === "legal") {
+      /* Wait for the timed legal notice. */
     } else if (state.screen === "chapters") {
       const open = CHAPTERS.find((chapter) => !chapter.locked);
       if (open) {
