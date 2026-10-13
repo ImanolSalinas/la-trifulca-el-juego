@@ -178,7 +178,7 @@ const medusaSong = new Audio("assets/places/medusa/aprovecha.mp3?v=1");
 medusaSong.preload = "auto";
 medusaSong.volume = 0.6;
 const MEDUSA_CARD = new Image();
-MEDUSA_CARD.src = "assets/places/medusa/arcade-gracias.png?v=1";
+MEDUSA_CARD.src = "assets/places/medusa/arcade-gracias.png?v=2";
 let medusaVisitStart = 0;
 let medusaCycle = -1;
 
