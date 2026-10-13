@@ -1868,7 +1868,12 @@ function drawPeople(map) {
     if (npc.visible && npc.sheet && npcPortraits[npc.id]) {
       const image = npcPortraits[npc.id];
       const dir = npc.dir || "down";
-      drawWalkSheet(image, { sheet: npc.sheet }, x, y + 6, dir, npc.sheet.idle);
+      const frames = npc.sheet.walk || [npc.sheet.idle];
+      const frame =
+        frames.length > 1
+          ? frames[Math.floor(performance.now() / (npc.sheet.frameMs || 180)) % frames.length]
+          : npc.sheet.idle;
+      drawWalkSheet(image, { sheet: npc.sheet }, x, y + 6, dir, frame);
       if (!npc.silent && !state.dialogue) {
         const h = npc.sheet.cellH * npc.sheet.scale;
         drawTalkMark(x, y + 6, h);
@@ -2066,8 +2071,8 @@ function drawDialogue() {
   }
   const portraits = dialoguePortraits();
   const many = portraits.length > 1;
-  const faceMaxW = many ? Math.min(40, Math.max(28, Math.floor((VIEW_W - 110) / 2))) : Math.min(64, Math.floor(VIEW_W * 0.28));
-  const faceMaxH = many ? Math.min(44, faceMaxW) : 52;
+  const faceMaxW = many ? Math.min(40, Math.max(28, Math.floor((VIEW_W - 110) / 2))) : Math.min(76, Math.floor(VIEW_W * 0.34));
+  const faceMaxH = many ? Math.min(44, faceMaxW) : 72;
   const faceSizes = portraits.map((portrait) => portraitSize(
     portrait.sw,
     portrait.sh,
