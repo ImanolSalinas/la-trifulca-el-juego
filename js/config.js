@@ -1,7 +1,6 @@
-// Pegá acá la página donde se sacan las entradas de Medusa.
-// Vacío hasta que esté el link: la boletería igual exige las 6 monedas.
+// Link de compra (botón Comprar en la tarjeta final de Medusa).
 window.TRIFULCA = {
-  ticketUrl: "",
+  ticketUrl: "https://alltickets.com.ar/latrifulca",
   tracks: [
     "Material/Musica/drive-download-20261002T191038Z-1-001/01-Lo mejor de mi vida eres tú.mp3",
     "Material/Musica/drive-download-20261002T191038Z-1-001/02-Por vos.mp3",

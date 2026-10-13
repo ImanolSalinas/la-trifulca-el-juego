@@ -178,7 +178,7 @@ const medusaSong = new Audio("assets/places/medusa/aprovecha.mp3?v=1");
 medusaSong.preload = "auto";
 medusaSong.volume = 0.6;
 const MEDUSA_CARD = new Image();
-MEDUSA_CARD.src = "assets/places/medusa/gracias.png?v=1";
+MEDUSA_CARD.src = "assets/places/medusa/arcade-gracias.png?v=1";
 let medusaVisitStart = 0;
 let medusaCycle = -1;
 
@@ -784,19 +784,13 @@ function openBoleteriaDialogue() {
     return;
   }
   state.deposited = true;
-  const url = window.TRIFULCA.ticketUrl;
   openDialogue(
-    url
-      ? [
-          "Boletería",
-          "Las 6 monedas. Perfecto.",
-          "Listo. Sacá tu entrada a Medusa.",
-        ]
-      : [
-          "Boletería",
-          "Las 6 monedas. Perfecto.",
-        ],
-    url ? "ticket" : null,
+    [
+      "Boletería",
+      "Las 6 monedas. Perfecto.",
+      "Ya podés entrar a Medusa.",
+    ],
+    null,
     null,
     "boleteria",
   );
@@ -1148,9 +1142,12 @@ function leaveMedusa() {
   });
 }
 
+function medusaCardVisible() {
+  return state.screen === "play" && state.map.id === "medusa" && medusaElapsed() >= MEDUSA_CARD_MS;
+}
+
 function syncTalkButton() {
-  const leaving = state.screen === "play" && state.map.id === "medusa";
-  const label = leaving ? "Salir" : "Hablar";
+  const label = medusaCardVisible() ? "Comprar" : "Hablar";
   if (talkButton.getAttribute("aria-label") !== label) {
     talkButton.setAttribute("aria-label", label);
   }
@@ -1172,9 +1169,11 @@ function drawMedusaCard() {
   }
   const iw = MEDUSA_CARD.naturalWidth;
   const ih = MEDUSA_CARD.naturalHeight;
-  const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+  const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
   const dw = iw * scale;
   const dh = ih * scale;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -1966,7 +1965,7 @@ function drawLabels(map, cam) {
 }
 
 function medusaExit() {
-  return { x: (VIEW_W - 100) / 2, y: VIEW_H - 28, w: 100, h: 26 };
+  return { x: (VIEW_W - 120) / 2, y: VIEW_H - 28, w: 120, h: 26 };
 }
 
 function drawHud() {
@@ -1984,13 +1983,13 @@ function drawHud() {
     ctx.fillText("Salir por los", VIEW_W / 2, 34);
     ctx.fillText("túneles secretos", VIEW_W / 2, 46);
     ctx.textAlign = "left";
-  } else if (state.map.id === "medusa" && !state.dialogue) {
+  } else if (medusaCardVisible() && !state.dialogue) {
     const exit = medusaExit();
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
     ctx.fillRect(exit.x, exit.y, exit.w, exit.h);
     ctx.textAlign = "center";
     ctx.fillStyle = "#f3e6c8";
-    ctx.fillText("Salir", VIEW_W / 2, exit.y + 18);
+    ctx.fillText("Comprar", VIEW_W / 2, exit.y + 18);
     ctx.textAlign = "left";
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
@@ -2378,8 +2377,8 @@ function hit(rect, point) {
 
 function onCanvasPointer(event) {
   const point = pointerPos(event);
-  if (state.screen === "play" && state.map.id === "medusa" && hit(medusaExit(), point)) {
-    leaveMedusa();
+  if (medusaCardVisible() && hit(medusaExit(), point)) {
+    openTicket();
     return;
   }
   if (state.screen === "title") {
@@ -2522,8 +2521,11 @@ bindTap(talkButton, () => {
     leaveTitle();
     return;
   }
+  if (medusaCardVisible()) {
+    openTicket();
+    return;
+  }
   if (state.map.id === "medusa") {
-    leaveMedusa();
     return;
   }
   talkQueued = true;
