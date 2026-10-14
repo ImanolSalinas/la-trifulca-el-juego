@@ -1,6 +1,6 @@
 // Link de compra (botón Comprar en la tarjeta final de Medusa).
 window.TRIFULCA = {
-  ticketUrl: "https://alltickets.com.ar/latrifulca",
+  ticketUrl: "https://alltickets.com.ar/evento/latrifulca",
   tracks: [
     "Material/Musica/drive-download-20261002T191038Z-1-001/01-Lo mejor de mi vida eres tú.mp3",
     "Material/Musica/drive-download-20261002T191038Z-1-001/02-Por vos.mp3",

@@ -843,7 +843,7 @@ const MAPS = {
           "Male Rondina",
           "Che, ¿cómo va? Soy Male Rondina.",
           "En que colegio se fundo la banda?.",
-          "¿Cuándo fue la fecha de la vuelta de la banda?",
+          "En que colegio se fundo la banda??",
         ],
         quiz: {
           options: [
