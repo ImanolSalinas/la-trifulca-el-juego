@@ -100,7 +100,7 @@ const state = {
 /** @type {readonly { id: number, name: string, blurb: string, locked: boolean }[]} */
 const CHAPTERS = [
   { id: 1, name: "Capítulo 1", blurb: "Disponible", locked: false },
-  { id: 2, name: "Capítulo 2", blurb: "Próximamente", locked: true },
+  { id: 2, name: "Capítulo 2", blurb: "Phaser", locked: false },
 ];
 
 function tileCenter(tile) {
@@ -2427,6 +2427,10 @@ function onCanvasPointer(event) {
   if (state.screen === "chapters") {
     CHAPTERS.forEach((chapter, index) => {
       if (!hit(chapterRect(index), point) || chapter.locked) {
+        return;
+      }
+      if (chapter.id === 2) {
+        window.location.href = "capitulo-2/";
         return;
       }
       state.chapter = chapter.id;
