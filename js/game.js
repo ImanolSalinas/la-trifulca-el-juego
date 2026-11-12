@@ -188,6 +188,47 @@ PASILLO_ART.src = "assets/places/pasillo/pasillo.png?v=80";
 const PASILLO_VEILED = new Image();
 PASILLO_VEILED.src = "assets/places/pasillo/pasillo-velado.png?v=1";
 
+/** Ruleta del sorteo en el pasillo (estática + GIF al girar). */
+const RULETA = {
+  // Cerca del inicio del pasillo (entre Frawens y Los Tilos).
+  x: 148,
+  y: 156,
+  w: 56,
+  h: 56,
+  rounds: 3,
+  /** Nombres pasando a toda velocidad. */
+  spinMs: 2600,
+  /** Tiempo mostrando al elegido de la ronda. */
+  holdMs: 1500,
+  /** Pausa antes de que se reactive sola. */
+  gapMs: 450,
+  /** Cada cuánto cambia el nombre en pantalla. */
+  tickMs: 40,
+};
+const RULETA_STILL = new Image();
+RULETA_STILL.src = "assets/places/pasillo/ruleta-estatica.png?v=2";
+const RULETA_SPIN_SRC = "assets/places/pasillo/ruleta-girando.gif?v=2";
+// GIF animado vía <img> overlay: canvas.drawImage no reproduce GIFs.
+const ruletaFx = document.createElement("img");
+ruletaFx.id = "ruleta-fx";
+ruletaFx.alt = "";
+ruletaFx.draggable = false;
+ruletaFx.style.cssText =
+  "position:absolute;display:none;pointer-events:none;z-index:1;image-rendering:auto;-webkit-user-select:none;user-select:none";
+document.getElementById("stage")?.appendChild(ruletaFx);
+/** @type {null | "spin" | "hold" | "gap"} */
+let ruletaPhase = null;
+/** @type {number} */
+let ruletaPhaseUntil = 0;
+/** @type {number} */
+let ruletaTickAt = 0;
+/** @type {string} */
+let ruletaFlashName = "";
+/** @type {null | string} */
+let ruletaRoundWinner = null;
+/** @type {string[]} */
+let ruletaWinners = [];
+
 const medusaVideo = document.createElement("video");
 medusaVideo.src = "assets/places/medusa/interior.mp4?v=1";
 medusaVideo.loop = true;
@@ -486,7 +527,232 @@ function solidAt(map, x, y) {
   if (map.id === "pasillo" && ty === 7 && tx >= 43 && tx <= 45 && !medusaRevealed()) {
     return true;
   }
+  if (map.id === "pasillo" && ruletaBlocks(x, y)) {
+    return true;
+  }
   return cell === "#" || cell === "B" || cell === "T" || cell === "P" || cell === "S" || cell === "W" || cell === "C" || cell === "L" || cell === "K" || cell === "G";
+}
+
+function ruletaBlocks(x, y) {
+  const left = RULETA.x - RULETA.w * 0.28;
+  const right = RULETA.x + RULETA.w * 0.28;
+  const top = RULETA.y - 10;
+  const bottom = RULETA.y + 4;
+  return x >= left && x <= right && y >= top && y <= bottom;
+}
+
+function nearRuleta() {
+  if (state.map.id !== "pasillo" || state.dialogue || ruletaActive()) {
+    return false;
+  }
+  const dx = player.x - RULETA.x;
+  const dy = player.y - RULETA.y;
+  return dx * dx + dy * dy <= 48 * 48;
+}
+
+function ruletaActive() {
+  return ruletaPhase !== null;
+}
+
+function ruletaSpinning() {
+  return ruletaPhase === "spin" || ruletaPhase === "hold";
+}
+
+function sorteoParticipants() {
+  const list = window.TRIFULCA_SORTEO?.participants;
+  return Array.isArray(list) ? list : [];
+}
+
+function pickSorteoWinner(exclude) {
+  const blocked = new Set(exclude || []);
+  const list = sorteoParticipants().filter((name) => !blocked.has(name));
+  if (list.length === 0) {
+    return null;
+  }
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function pickRuletaFlashName() {
+  const blocked = new Set(ruletaWinners);
+  if (ruletaRoundWinner) {
+    blocked.add(ruletaRoundWinner);
+  }
+  const list = sorteoParticipants().filter((name) => !blocked.has(name));
+  const pool = list.length ? list : sorteoParticipants();
+  if (!pool.length) {
+    return "???";
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function showRuletaGif() {
+  ruletaFx.src = `${RULETA_SPIN_SRC}&t=${Date.now()}`;
+  ruletaFx.style.display = "block";
+}
+
+function beginRuletaRound() {
+  const winner = pickSorteoWinner(ruletaWinners);
+  if (!winner) {
+    finishRuletaSorteo();
+    return;
+  }
+  ruletaRoundWinner = winner;
+  ruletaFlashName = pickRuletaFlashName();
+  ruletaTickAt = performance.now();
+  ruletaPhase = "spin";
+  ruletaPhaseUntil = performance.now() + RULETA.spinMs;
+  showRuletaGif();
+}
+
+function startRuletaSpin() {
+  if (ruletaActive() || state.dialogue) {
+    return;
+  }
+  if (sorteoParticipants().length === 0) {
+    openDialogue(["Ruleta", "No hay participantes cargados."], null, null, null);
+    return;
+  }
+  ruletaWinners = [];
+  ruletaRoundWinner = null;
+  beginRuletaRound();
+}
+
+function finishRuletaSorteo() {
+  const winners = ruletaWinners.slice(0, RULETA.rounds);
+  ruletaPhase = null;
+  ruletaPhaseUntil = 0;
+  ruletaRoundWinner = null;
+  ruletaFlashName = "";
+  ruletaWinners = [];
+  hideRuletaFx();
+  if (!winners.length) {
+    openDialogue(["Ruleta", "No se pudo completar el sorteo."], null, null, null);
+    return;
+  }
+  openDialogue(
+    [
+      "¡Sorteo!",
+      "Los 3 ganadores:",
+      ...winners.map((name, index) => `${index + 1}. @${name}`),
+      "¡Felicitaciones!",
+    ],
+    null,
+    null,
+    null,
+  );
+}
+
+function updateRuleta() {
+  if (!ruletaPhase) {
+    return;
+  }
+  const now = performance.now();
+  if (ruletaPhase === "spin") {
+    if (now - ruletaTickAt >= RULETA.tickMs) {
+      ruletaTickAt = now;
+      ruletaFlashName = pickRuletaFlashName();
+    }
+    if (now >= ruletaPhaseUntil) {
+      ruletaFlashName = ruletaRoundWinner || ruletaFlashName;
+      ruletaPhase = "hold";
+      ruletaPhaseUntil = now + RULETA.holdMs;
+    }
+    return;
+  }
+  if (ruletaPhase === "hold") {
+    if (now >= ruletaPhaseUntil) {
+      if (ruletaRoundWinner && !ruletaWinners.includes(ruletaRoundWinner)) {
+        ruletaWinners.push(ruletaRoundWinner);
+      }
+      ruletaRoundWinner = null;
+      if (ruletaWinners.length >= RULETA.rounds) {
+        finishRuletaSorteo();
+        return;
+      }
+      ruletaPhase = "gap";
+      ruletaPhaseUntil = now + RULETA.gapMs;
+      hideRuletaFx();
+    }
+    return;
+  }
+  if (ruletaPhase === "gap" && now >= ruletaPhaseUntil) {
+    beginRuletaRound();
+  }
+}
+
+function drawRuletaRollHud() {
+  if (!ruletaPhase || ruletaPhase === "gap") {
+    return;
+  }
+  const locked = ruletaPhase === "hold";
+  const round = Math.min(RULETA.rounds, ruletaWinners.length + 1);
+  const label = ruletaFlashName ? `@${ruletaFlashName}` : "...";
+  const boxW = Math.min(VIEW_W - 12, Math.max(176, label.length * 7 + 28));
+  const boxH = 40;
+  const x = (VIEW_W - boxW) / 2;
+  const y = 26;
+  const pulse = locked ? 1.08 + Math.sin(performance.now() / 90) * 0.04 : 1;
+  ctx.fillStyle = "rgba(10, 8, 6, 0.92)";
+  ctx.fillRect(x, y, boxW, boxH);
+  ctx.strokeStyle = locked ? "#f2d24b" : "#45b1d1";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, boxW - 2, boxH - 2);
+  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#9ad7ea";
+  ctx.fillText(`SORTEO ${round}/${RULETA.rounds}`, VIEW_W / 2, y + 13);
+  ctx.save();
+  ctx.translate(VIEW_W / 2, y + 30);
+  ctx.scale(pulse, pulse);
+  ctx.fillStyle = locked ? "#f2d24b" : "#f3e6c8";
+  ctx.fillText(label, 0, 0);
+  ctx.restore();
+  ctx.textAlign = "left";
+}
+
+function hideRuletaFx() {
+  ruletaFx.style.display = "none";
+  ruletaFx.removeAttribute("src");
+}
+
+/**
+ * Places the spinning GIF over the canvas (world → CSS pixels).
+ * @param {{ x: number, y: number, zoom: number }} cam
+ */
+function syncRuletaOverlay(cam) {
+  if (state.screen !== "play" || state.map.id !== "pasillo" || !ruletaSpinning()) {
+    return;
+  }
+  const stage = document.getElementById("stage");
+  if (!stage) {
+    return;
+  }
+  const canvasRect = canvas.getBoundingClientRect();
+  const stageRect = stage.getBoundingClientRect();
+  const scaleX = canvasRect.width / VIEW_W;
+  const scaleY = canvasRect.height / VIEW_H;
+  const wx = RULETA.x - RULETA.w / 2;
+  const wy = RULETA.y - RULETA.h;
+  const viewX = (wx - cam.x) * cam.zoom;
+  const viewY = (wy - cam.y) * cam.zoom;
+  const viewW = RULETA.w * cam.zoom;
+  const viewH = RULETA.h * cam.zoom;
+  ruletaFx.style.display = "block";
+  ruletaFx.style.left = `${canvasRect.left - stageRect.left + viewX * scaleX}px`;
+  ruletaFx.style.top = `${canvasRect.top - stageRect.top + viewY * scaleY}px`;
+  ruletaFx.style.width = `${viewW * scaleX}px`;
+  ruletaFx.style.height = `${viewH * scaleY}px`;
+}
+
+function ruletaHitInView(point, cam) {
+  const wx = RULETA.x - RULETA.w / 2;
+  const wy = RULETA.y - RULETA.h;
+  const x = (wx - cam.x) * cam.zoom;
+  const y = (wy - cam.y) * cam.zoom;
+  const w = RULETA.w * cam.zoom;
+  const h = RULETA.h * cam.zoom;
+  // Include the talk-mark above the wheel.
+  return point.x >= x - 4 && point.x <= x + w + 4 && point.y >= y - 16 && point.y <= y + h + 8;
 }
 
 function canStand(map, x, y) {
@@ -901,6 +1167,10 @@ function talk() {
     }
     return;
   }
+  if (nearRuleta()) {
+    startRuletaSpin();
+    return;
+  }
   if (!atCounter()) {
     return;
   }
@@ -1239,6 +1509,29 @@ function drawMedusa() {
 
 function drawPasillo() {
   drawVenueArt(medusaRevealed() ? PASILLO_ART : PASILLO_VEILED, "#241810");
+}
+
+function drawRuleta() {
+  if (state.map.id !== "pasillo") {
+    return;
+  }
+  const spinning = ruletaSpinning();
+  const w = RULETA.w;
+  const h = RULETA.h;
+  const x = RULETA.x - w / 2;
+  const y = RULETA.y - h;
+  // Mientras gira, el GIF vive en el overlay HTML (canvas no anima GIFs).
+  if (!spinning && RULETA_STILL.complete && RULETA_STILL.naturalWidth) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(RULETA_STILL, x, y, w, h);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+  }
+  if (nearRuleta() && !state.dialogue && !spinning) {
+    drawTalkMark(RULETA.x, RULETA.y, h);
+  }
 }
 
 function drawFrawens() {
@@ -2025,6 +2318,13 @@ function drawHud() {
     ctx.fillStyle = "#f3e6c8";
     ctx.fillText("Comprar", VIEW_W / 2, exit.y + 18);
     ctx.textAlign = "left";
+  } else if (!state.dialogue && (nearRuleta() || ruletaActive())) {
+    ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
+    ctx.fillRect(86, 20, 88, 14);
+    drawPlayCircle(96, 27, 4.5);
+    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.fillStyle = "#f3e6c8";
+    ctx.fillText(ruletaActive() ? "Sorteo" : "Girar", 106, 31);
   } else if (!state.dialogue && (nearbyNpc() || atCounter())) {
     ctx.fillStyle = "rgba(16, 12, 10, 0.88)";
     ctx.fillRect(86, 20, 88, 14);
@@ -2360,20 +2660,24 @@ function render() {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   if (state.screen === "title" || state.screen === "legal") {
+    hideRuletaFx();
     if (state.screen === "title") {
       drawTitle();
     }
     return null;
   }
   if (state.screen === "chapters") {
+    hideRuletaFx();
     drawChapters();
     return null;
   }
   if (state.screen === "select") {
+    hideRuletaFx();
     drawSelect();
     return null;
   }
   if (state.map.id === "medusa") {
+    hideRuletaFx();
     drawMedusa();
     drawHud();
     return null;
@@ -2386,6 +2690,7 @@ function render() {
   drawFloorAndWalls(state.map);
   drawTilosProps(true);
   drawDoors(state.map);
+  drawRuleta();
   drawCoin(state.map);
   drawPeople(state.map);
   drawFrawensBalls();
@@ -2393,8 +2698,10 @@ function render() {
   drawTilosProps(false);
   drawSigns(state.map);
   ctx.restore();
+  syncRuletaOverlay(cam);
   drawLabels(state.map, cam);
   drawHud();
+  drawRuletaRollHud();
   ticketRect = drawDialogue();
   return ticketRect;
 }
@@ -2423,6 +2730,18 @@ function onCanvasPointer(event) {
   }
   if (state.screen === "legal") {
     return;
+  }
+  if (
+    state.screen === "play" &&
+    state.map.id === "pasillo" &&
+    !state.dialogue &&
+    !transition.active
+  ) {
+    const cam = camera();
+    if (ruletaHitInView(point, cam) && nearRuleta()) {
+      startRuletaSpin();
+      return;
+    }
   }
   if (state.screen === "chapters") {
     CHAPTERS.forEach((chapter, index) => {
@@ -2674,8 +2993,10 @@ function frame(now) {
     checkBoleteria();
     checkJose();
     checkMedusaExit();
+    updateRuleta();
   } else if (state.screen === "play") {
     updateWorldCoin(dt);
+    updateRuleta();
   }
   syncMedusaPlayback();
   syncTalkButton();
